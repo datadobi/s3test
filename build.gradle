@@ -1,0 +1,51 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def genSourceDir = file('src/main/generated')
+def genTestDir = file('src/test/generated_tests')
+
+compileJava {
+    options.generatedSourceOutputDirectory.set(genSourceDir)
+    options.encoding = 'UTF-8'
+}
+
+compileTestJava {
+    options.generatedSourceOutputDirectory.set(genTestDir)
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation libs.assertj
+    implementation libs.assertj.guava
+
+    implementation libs.autovalue.annotations
+    annotationProcessor libs.autovalue
+
+    implementation platform(libs.aws.bom)
+    implementation libs.aws.http
+    implementation libs.aws.s3
+
+    implementation libs.guava
+    implementation libs.jsr305
+
+    implementation libs.slf4j.api
+    implementation libs.log4j.api
+    implementation libs.log4j.jpl
+    implementation libs.log4j.jul
+    implementation libs.log4j.slf4j
+    implementation libs.jackson.yaml
+    implementation libs.commons.logging
+
+    implementation libs.junit
+}

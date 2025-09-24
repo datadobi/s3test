@@ -1,0 +1,145 @@
+package com.datadobi.s3test;
+
+import com.datadobi.s3test.s3.S3TestBase;
+import org.junit.Test;
+import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.*;
+import static org.junit.Assert.*;
+
+public class MultiPartUploadTests extends S3TestBase {
+    private static final int MB = 1024 * 1024;
+
+    public MultiPartUploadTests() throws IOException {
+    }
+
+    @Test
+    public void testMultipartPut() throws IOException {
+//        Bucket b = getBucket();
+//
+//        long size = 273;
+//        ObjectSummary putInfo = b.putObject(
+//                "foo",
+//                new DummyInputStream(size),
+//                ObjectInfo.builder().size(size).build(),
+//                MultiPartCopyOption.create(
+//                        64,
+//                        10000
+//                )
+//        );
+//        assertTrue(b.objectExists("foo"));
+//
+//        try (ObjectInputStream in = b.getObject("foo")) {
+//            byte[] content = in.readAllBytes();
+//            Files.write(Path.of("foo.blob"), content);
+//        }
+//
+//        ObjectInfo info = b.getObjectInfo("foo", null);
+//        assertEquals(size, info.size());
+//        assertEquals(putInfo.eTag(), info.eTag());
+    }
+
+    @Test
+    public void thatMultipartRetrievesOriginalParts() throws Exception {
+        // generate multipart data
+        // see: https://docs.aws.amazon.com/AmazonS3/latest/dev/llJavaUploadFile.html
+
+        var key = "multiparted";
+        // parts are minimum 5 MB
+        long[] partitionSizes = {5 * MB, 10 * MB, 5 * MB, 7 * MB, 12 * MB, 13 * MB, 9 * MB, 5 * MB, 5 * MB, 5 * MB, 3 * MB};
+        var partitionCount = partitionSizes.length;
+        var uploadedTotalSize = Arrays.stream(partitionSizes).sum();
+
+        List<CompletedPart> partETags = new ArrayList<>();
+
+        // Initiate the multipart upload.
+        var initResponse = bucket.createMultipartUpload(key);
+
+        // Upload the file parts.
+        for (var partNumber = 1; partNumber <= partitionCount; partNumber++) {
+            var partitionSize = partitionSizes[partNumber - 1];
+
+            var content = new byte[(int) partitionSize];
+
+            InputStream contentStream = new ByteArrayInputStream(content);
+
+            // Upload the part and add the response's ETag to our list.
+            var finalPartNumber = partNumber;
+            var uploadResult = bucket.uploadPart(r -> r.key(key)
+                    .uploadId(initResponse.uploadId())
+                    .partNumber(finalPartNumber)
+                    .contentLength((long) content.length), content);
+            partETags.add(CompletedPart.builder()
+                    .partNumber(partNumber)
+                    .eTag(uploadResult.eTag())
+                    .build());
+        }
+
+        // Complete the multipart upload.
+        bucket.completeMultipartUpload(r -> r.key(key)
+                .uploadId(initResponse.uploadId())
+                .multipartUpload(CompletedMultipartUpload.builder().parts(partETags).build()));
+
+        //
+        // retrieve multipart data
+        //
+
+        var receivedTotalSize = 0;
+
+        var objectMetadata = bucket.headObject(r -> r.key(key).partNumber(1));
+
+        assertNotNull(objectMetadata);
+
+        Integer receivePartitionCount = null;
+
+        if (!target.hasRestrictions(MULTIPART_DOWNLOAD_BROKEN)) {
+            receivePartitionCount = objectMetadata.partsCount();
+            if (receivePartitionCount != null) {
+                assertTrue(
+                        target.hasRestrictions(MULTIPART_SIZES_NOT_KEPT) ||
+                                receivePartitionCount == partitionCount
+                );
+                assertFalse(target.hasRestrictions(PARTCOUNT_NOT_SUPPORTED));
+            } else {
+                assertTrue(target.hasRestrictions(PARTCOUNT_NOT_SUPPORTED));
+            }
+        }
+
+        if (receivePartitionCount != null) {
+            // Download the file parts.
+            for (var partNumber = 1; partNumber <= receivePartitionCount; partNumber++) {
+                var partitionSize = partitionSizes[partNumber - 1];
+
+                var finalPartNumber = partNumber;
+                try (var object = bucket.getObject(r -> r.key(key).partNumber(finalPartNumber))) {
+                    long receivedSize = object.response().contentLength();
+
+                    receivedTotalSize += receivedSize;
+
+                    if (target.hasRestrictions(MULTIPART_SIZES_NOT_KEPT)) {
+                        assertNotEquals(receivedSize, partitionSize);
+                    } else {
+                        assertEquals(receivedSize, partitionSize);
+                    }
+                }
+            }
+        } else {
+            // Download in single request.
+            try (var object = bucket.getObject(key)) {
+                long receivedSize = object.response().contentLength();
+
+                receivedTotalSize += receivedSize;
+            }
+        }
+
+        assertEquals(receivedTotalSize, uploadedTotalSize);
+    }
+}
