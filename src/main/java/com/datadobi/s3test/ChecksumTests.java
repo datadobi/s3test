@@ -79,8 +79,8 @@ public class ChecksumTests extends S3TestBase {
         };
 
         var headResponse = bucket.headObject(r -> r.key(key).checksumMode(ChecksumMode.ENABLED));
-        assertEquals(Long.valueOf(key.length()), headResponse.contentLength());
-        assertEquals(putResponse.eTag(), headResponse.eTag());
+        assertEquals("Content length mismatch", Long.valueOf(key.length()), headResponse.contentLength());
+        assertEquals("ETag mismatch", putResponse.eTag(), headResponse.eTag());
         var headChecksum = switch (checksumAlgorithm) {
             case CRC32 -> headResponse.checksumCRC32();
             case CRC32_C -> headResponse.checksumCRC32C();
@@ -89,13 +89,13 @@ public class ChecksumTests extends S3TestBase {
             case CRC64_NVME -> headResponse.checksumCRC64NVME();
             case UNKNOWN_TO_SDK_VERSION -> throw new IllegalArgumentException(checksumAlgorithm.toString());
         };
-        assertEquals(putChecksum, headChecksum);
+        assertEquals("Checksum mismatch", putChecksum, headChecksum);
     }
 
     @Test
     public void indefiniteLengthWithChecksum() {
         String key = "foo";
-        var putResponse = bucket.putObject(
+        bucket.putObject(
                 r -> r.key(key).checksumAlgorithm(ChecksumAlgorithm.CRC32),
                 RequestBody.fromContentProvider(
                         ContentStreamProvider.fromInputStream(new DummyInputStream(1024*1024)),

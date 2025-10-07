@@ -28,13 +28,13 @@ public class DeleteObjectTests extends S3TestBase {
     }
 
     @Test
-    public void testDeleteObject() throws IOException {
+    public void testDeleteObject() {
         bucket.putObject("foo", "Hello, World!");
         bucket.deleteObject("foo");
     }
 
     @Test
-    public void testDeleteObjectContainingDotDot() throws IOException {
+    public void testDeleteObjectContainingDotDot() {
         var fullContent = "Hello, World!";
         bucket.putObject("f..o", fullContent);
         bucket.headObject("f..o");

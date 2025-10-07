@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -168,6 +169,12 @@ public class S3Bucket {
             getObjectRequest.accept(r);
             r.bucket(bucket);
         });
+    }
+
+    public byte[] getObjectContent(String key) throws IOException {
+        try (var result = getObject(key)) {
+            return result.readAllBytes();
+        }
     }
 
     public DeleteObjectResponse deleteObject(String key) {

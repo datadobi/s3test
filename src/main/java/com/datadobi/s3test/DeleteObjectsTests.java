@@ -23,8 +23,6 @@ import org.junit.Test;
 import software.amazon.awssdk.services.s3.model.DeletedObject;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -34,7 +32,7 @@ public class DeleteObjectsTests extends S3TestBase {
     }
 
     @Test
-    public void testDeleteObjectsByKey() throws IOException {
+    public void testDeleteObjectsByKey() {
         bucket.putObject("a", "Hello");
         bucket.putObject("b", "World");
         var deleteResponse = bucket.deleteObjects("a", "b");
@@ -46,7 +44,7 @@ public class DeleteObjectsTests extends S3TestBase {
     }
 
     @Test
-    public void testDeleteObjectsWithMatchingETag() throws IOException {
+    public void testDeleteObjectsWithMatchingETag() {
         bucket.putObject("a", "Hello");
         var headResponse = bucket.headObject("a");
         var deleteResponse = bucket.deleteObjects(oid -> oid.key("a").eTag(headResponse.eTag()));
@@ -58,7 +56,7 @@ public class DeleteObjectsTests extends S3TestBase {
     }
 
     @Test
-    public void testDeleteObjectsWithDifferentETag() throws IOException {
+    public void testDeleteObjectsWithDifferentETag() {
         bucket.putObject("a", "Hello");
         var deleteResponse = bucket.deleteObjects(oid -> {
             var etag = "\"foo\"";
@@ -72,7 +70,7 @@ public class DeleteObjectsTests extends S3TestBase {
     }
 
     @Test
-    public void testDeleteObjectsContainingDotDot() throws IOException {
+    public void testDeleteObjectsContainingDotDot() {
         bucket.putObject("a..b", "Hello");
         bucket.putObject("c..d", "World");
         var deleteResponse = bucket.deleteObjects("a..b", "c..d");

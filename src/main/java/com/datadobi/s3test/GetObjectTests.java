@@ -78,7 +78,7 @@ public class GetObjectTests extends S3TestBase {
     }
 
     @Test
-    public void testGetPartialUnsatisfiable() throws IOException {
+    public void testGetPartialUnsatisfiable() {
         var fullContent = "Hello, World!";
         bucket.putObject("foo", fullContent);
 

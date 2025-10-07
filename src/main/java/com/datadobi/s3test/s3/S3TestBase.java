@@ -18,6 +18,7 @@
  */
 package com.datadobi.s3test.s3;
 
+import org.apache.logging.log4j.LogManager;
 import org.junit.After;
 import org.junit.Before;
 import software.amazon.awssdk.services.s3.S3Client;

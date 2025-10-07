@@ -38,7 +38,7 @@ public class PutObjectTests extends S3TestBase {
     }
 
     @Test
-    public void testPutObject() throws IOException {
+    public void testPutObject() {
         var putResponse = bucket.putObject("foo", "bar");
         var headResponse = bucket.headObject("foo");
         assertEquals(Long.valueOf(3), headResponse.contentLength());
@@ -46,7 +46,7 @@ public class PutObjectTests extends S3TestBase {
     }
 
     @Test
-    public void testPutEmptyObject() throws IOException {
+    public void testPutEmptyObject() {
         var putResponse = bucket.putObject("foo", "");
         var headResponse = bucket.headObject("foo");
         assertEquals(Long.valueOf(0), headResponse.contentLength());

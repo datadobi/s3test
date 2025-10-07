@@ -23,9 +23,7 @@ import org.junit.Test;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -61,8 +59,6 @@ public class MultiPartUploadTests extends S3TestBase {
 
             var content = new byte[(int) partitionSize];
 
-            InputStream contentStream = new ByteArrayInputStream(content);
-
             // Upload the part and add the response's ETag to our list.
             var finalPartNumber = partNumber;
             var uploadResult = bucket.uploadPart(r -> r.key(key)
@@ -84,7 +80,7 @@ public class MultiPartUploadTests extends S3TestBase {
         // retrieve multipart data
         //
 
-        var receivedTotalSize = 0;
+        long receivedTotalSize = 0;
 
         var objectMetadata = bucket.headObject(r -> r.key(key).partNumber(1));
 

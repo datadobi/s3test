@@ -18,12 +18,12 @@
  */
 package com.datadobi.s3test.util;
 
-import java.util.Objects;
+import javax.annotation.Nullable;
 
-public record Pair<A, B>(A first, B second) {
+public record Pair<A, B>(@Nullable A first, @Nullable B second) {
     public Pair(A first, B second) {
-        this.first = Objects.requireNonNull(first);
-        this.second = Objects.requireNonNull(second);
+        this.first = first;
+        this.second = second;
     }
 
     public static <A, B> Pair<A, B> create(A first, B second) {

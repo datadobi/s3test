@@ -81,7 +81,7 @@ public abstract class ServiceDefinition {
 
         builder.useEncryption(endpoint.getScheme().equalsIgnoreCase("https"));
 
-        if (bucket != null) {
+        if (bucket != null && !bucket.isEmpty()) {
             builder.withExistingBucket(bucket);
         } else {
             builder.withUniqueBucket();
@@ -119,6 +119,10 @@ public abstract class ServiceDefinition {
     }
 
     private static Map<String, Map<String, String>> readConfigFile(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return Map.of();
+        }
+
         Pattern header = Pattern.compile("\\[(.+)]");
         Pattern keyValue = Pattern.compile("(.+)=(.+)");
 
@@ -158,6 +162,10 @@ public abstract class ServiceDefinition {
             while (bucketName.startsWith("/")) {
                 bucketName = bucketName.substring(1);
             }
+        }
+
+        if (bucketName != null && bucketName.isBlank()) {
+            bucketName = null;
         }
 
         if (uri.getScheme().equals("s3profile")) {
@@ -362,7 +370,7 @@ public abstract class ServiceDefinition {
         public abstract Builder responseChecksumValidation(ResponseChecksumValidation value);
 
         public Builder withUniqueBucket() {
-            bucket(UUID.randomUUID().toString());
+            bucket("s3test-" + UUID.randomUUID());
             createBucket(true);
             return this;
         }

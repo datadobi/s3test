@@ -249,13 +249,13 @@ public class ObjectKeyTests extends S3TestBase {
             assertThat(status).as("putting the object should succeed").matches(s -> s / 100 == 2, "HTTP 2xx status");
 
             //check that we can retrieve
-            var roundTrip = new String(getObject(equivalentStrings.get(0)), UTF_8);
+            var roundTrip = new String(bucket.getObjectContent(equivalentStrings.get(0)), UTF_8);
             assertThat(roundTrip).isEqualTo(testData);
 
 
             //trying the other keys should fail
             for (var equivalentString : equivalentStrings.subList(1, equivalentStrings.size())) {
-                assertThatExceptionOfType(Throwable.class).isThrownBy(() -> getObject(equivalentString));
+                assertThatExceptionOfType(Throwable.class).isThrownBy(() -> bucket.getObjectContent(equivalentString));
             }
         }
     }
@@ -345,10 +345,10 @@ public class ObjectKeyTests extends S3TestBase {
                 });
 
                 // handle the case where the bucket does not exist yet
-                if (resp.first() == 404 && attempt < 10) {
+                if (Objects.equals(resp.first(), 404) && attempt < 10) {
                     System.out.println("  Retry[" + attempt + "] putObject: " + resp.first());
                     try {
-                        Thread.sleep(100 + attempt * 100);
+                        Thread.sleep(100 + attempt * 100L);
                     } catch (InterruptedException interruptedException) {
                         // abort
                         return resp.first();
@@ -361,7 +361,6 @@ public class ObjectKeyTests extends S3TestBase {
         }
     }
 
-    @Nonnull
     private Map<String, String> awsSignPutRequest(byte[] testData, URI full, String signingRegion) {
         var credentials = target.getCredentials().resolveCredentials();
 
@@ -394,16 +393,6 @@ public class ObjectKeyTests extends S3TestBase {
         headers.remove("Content-Length");
         headers.remove("Host");
         return headers;
-    }
-
-    private void deleteObject(String key) {
-        bucket.deleteObject(key);
-    }
-
-    private byte[] getObject(String key) throws IOException {
-        try (var result = bucket.getObject(key)) {
-            return result.readAllBytes();
-        }
     }
 
     private String hash(byte[] data) {
