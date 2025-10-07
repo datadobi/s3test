@@ -20,6 +20,13 @@ package com.datadobi.s3test;
 
 import com.datadobi.s3test.s3.S3TestBase;
 import com.datadobi.s3test.s3.ServiceDefinition;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
+import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
+import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.manipulation.Filter;
@@ -29,17 +36,30 @@ import org.junit.runner.notification.RunListener;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class RunTests {
     public static void main(String[] args) throws InitializationError, IOException {
-        String include = null;
-        String exclude = null;
+        ConfigurationBuilder<BuiltConfiguration> configBuilder =
+                ConfigurationBuilderFactory.newConfigurationBuilder();
+        Configurator.initialize(configBuilder
+                .add(configBuilder.newRootLogger(Level.OFF))
+                .add(configBuilder.newLogger("org.apache.http.wire")
+                        .addAttribute("level", Level.DEBUG))
+                .build(false));
+
+
+        List<Pattern> include = new ArrayList<>();
+        List<Pattern> exclude = new ArrayList<>();
+        Path logPath = null;
 
         int i = 0;
         for (; i < args.length; i++) {
@@ -49,17 +69,20 @@ public class RunTests {
             }
 
             if (arg.equals("-e") || arg.equals("--exclude")) {
-                exclude = args[++i];
+                exclude.add(Pattern.compile(args[++i]));
             } else if (arg.equals("-i") || arg.equals("--include")) {
-                include = args[++i];
+                include.add(Pattern.compile(args[++i]));
+            } else if (arg.equals("-l") || arg.equals("--log")) {
+                logPath = Path.of(args[++i]);
             }
         }
 
         if (i == args.length) {
             System.err.println("Usage: RunTests [options] S3_URI");
             System.err.println("Options:");
-            System.err.println("  -e --exclude PATTERN    Exclude test matching pattern");
-            System.err.println("  -i --include PATTERN    Include test matching pattern");
+            System.err.println("  -e --exclude PATTERN    Exclude tests matching PATTERN");
+            System.err.println("  -i --include PATTERN    Include tests matching PATTERN");
+            System.err.println("  -l --log PATH           Write test error output and HTTP wire trace to PATH");
             System.exit(1);
         }
 
@@ -73,7 +96,7 @@ public class RunTests {
         List<Class<?>> classes = new ArrayList<>();
 
         classes.add(ChecksumTests.class);
-        classes.add(ConditionalRequestsTest.class);
+        classes.add(ConditionalRequestTests.class);
         classes.add(DeleteObjectsTests.class);
         classes.add(DeleteObjectTests.class);
         classes.add(GetObjectTests.class);
@@ -85,10 +108,7 @@ public class RunTests {
         classes.add(PutObjectTests.class);
 
         JUnitCore junit = new JUnitCore();
-        junit.addListener(new TextListener());
-
-        Pattern excludePattern = exclude == null ? null : Pattern.compile(exclude);
-        Pattern includePattern = include == null ? null : Pattern.compile(include);
+        junit.addListener(new TextListener(logPath));
 
         for (Class<?> c : classes) {
             BlockJUnit4ClassRunner runner = new BlockJUnit4ClassRunner(c);
@@ -98,12 +118,12 @@ public class RunTests {
                     @Override
                     public boolean shouldRun(Description description) {
                         String methodName = description.getMethodName();
-                        if (excludePattern != null && excludePattern.matcher(methodName).matches()) {
+                        if (exclude.stream().anyMatch(e -> e.matcher(methodName).matches())) {
                             System.out.println(methodName + " excluded");
                             return false;
                         }
 
-                        if (includePattern != null && !includePattern.matcher(methodName).matches()) {
+                        if (!include.isEmpty() && include.stream().noneMatch(i -> i.matcher(methodName).matches())) {
                             System.out.println(methodName + " not included");
                             return false;
                         }
@@ -125,11 +145,23 @@ public class RunTests {
 
     private static class TextListener extends RunListener {
         private final PrintStream stdOut;
+        private final Path logPath;
         private Failure failure;
         private boolean ignored;
+        private Configuration previousConfiguration;
 
-        public TextListener() {
+        public TextListener(@Nullable Path logPath) {
+            this.logPath = logPath;
             stdOut = System.out;
+        }
+
+        private @Nullable Path testLogPath(Description description) throws IOException {
+            if (logPath == null) {
+                return null;
+            }
+
+            Path path = logPath.resolve(description.getTestClass().getSimpleName()).resolve(description.getMethodName());
+            return Files.createDirectories(path);
         }
 
         @Override
@@ -137,10 +169,29 @@ public class RunTests {
             stdOut.println("Running " + description);
         }
 
-        public void testStarted(Description description) {
+        public void testStarted(Description description) throws Exception {
             stdOut.append("  " + description.getMethodName());
             failure = null;
             ignored = false;
+
+            Path logPath = testLogPath(description);
+            if (logPath != null) {
+                ConfigurationBuilder<BuiltConfiguration> configBuilder =
+                        ConfigurationBuilderFactory.newConfigurationBuilder();
+                Configuration configuration = configBuilder
+                        .add(configBuilder
+                                .newAppender("wire", "File")
+                                .addAttribute("fileName", logPath.resolve("wire.log"))
+                                .add(configBuilder.newLayout("PatternLayout").addAttribute("pattern", "%m%n")))
+                        .add(configBuilder.newRootLogger(Level.OFF))
+                        .add(configBuilder.newLogger("org.apache.http.wire")
+                                .addAttribute("level", Level.DEBUG)
+                                .add(configBuilder.newAppenderRef("wire")))
+                        .build(false);
+
+                previousConfiguration = LoggerContext.getContext().getConfiguration();
+                Configurator.reconfigure(configuration);
+            }
         }
 
         public void testFailure(Failure failure) {
@@ -157,9 +208,22 @@ public class RunTests {
                 stdOut.println(" 🙈");
             } else if (failure != null) {
                 stdOut.println(" ❌");
-                stdOut.println(failure.getTrimmedTrace());
+                Path logPath = testLogPath(description);
+                if (logPath != null) {
+                    Files.writeString(
+                            logPath.resolve("error.log"),
+                            failure.getTrace(),
+                            StandardCharsets.UTF_8
+                    );
+                } else {
+                    stdOut.println(failure.getTrimmedTrace());
+                }
             } else {
                 stdOut.println(" ✅");
+            }
+
+            if (previousConfiguration != null) {
+                Configurator.reconfigure(previousConfiguration);
             }
         }
     }
