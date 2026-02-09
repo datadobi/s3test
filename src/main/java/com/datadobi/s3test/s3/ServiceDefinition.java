@@ -131,8 +131,8 @@ public abstract class ServiceDefinition {
         Map<String, String> section = null;
 
         for (int i = 0; i < config.size(); i++) {
-            String line = config.get(i);
-            if (line.isBlank()) {
+            String line = config.get(i).trim();
+            if (line.isBlank() || line.startsWith("#")) {
                 continue;
             }
 
