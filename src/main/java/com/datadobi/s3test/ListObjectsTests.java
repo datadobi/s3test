@@ -44,6 +44,10 @@ public class ListObjectsTests extends S3TestBase {
     public ListObjectsTests() throws IOException {
     }
 
+    /**
+     * Uploads 143 objects, then lists all keys (implementation uses V2) with page size 7.
+     * Expected: All 143 keys are returned (paginated); set of keys matches uploaded keys.
+     */
     @Test
     public void serialListObjectsV1GetsAllKeys() {
         Set<String> generatedKeys = new HashSet<>();
@@ -57,6 +61,10 @@ public class ListObjectsTests extends S3TestBase {
         assertEquals(generatedKeys, new HashSet<>(keys));
     }
 
+    /**
+     * Uploads 143 objects, then lists all keys using ListObjects V2 with page size 7.
+     * Expected: All 143 keys are returned (paginated); set of keys matches uploaded keys.
+     */
     @Test
     public void serialListObjectsV2GetsAllKeys() {
         Set<String> generatedKeys = new HashSet<>();
@@ -70,21 +78,37 @@ public class ListObjectsTests extends S3TestBase {
         assertEquals(generatedKeys, new HashSet<>(keys));
     }
 
+    /**
+     * Lists with V2, maxKeys=1, startAfter="180" when keys "180","190","200" exist.
+     * Expected: One key returned ("190"); isTruncated is true (more keys exist).
+     */
     @Test
     public void listUntilPenultimateV2ShouldIndicateTruncatedWithExistingStartAfterKey() {
         listUntilPenultimateShouldIndicateTruncated(V2, "180");
     }
 
+    /**
+     * Same as above but startAfter="185" (non-existing key); first key after "185" is "190".
+     * Expected: One key "190" returned; isTruncated is true.
+     */
     @Test
     public void listUntilPenultimateV2ShouldIndicateTruncatedWithNonExistingStartAfterKey() {
         listUntilPenultimateShouldIndicateTruncated(V2, "185");
     }
 
+    /**
+     * Lists with V1 (marker), maxKeys=1, startAfter="180"; keys "180","190","200" exist.
+     * Expected: One key "190"; isTruncated true.
+     */
     @Test
     public void listUntilPenultimateV1ShouldIndicateTruncatedWithExistingStartAfterKey() {
         listUntilPenultimateShouldIndicateTruncated(V1, "180");
     }
 
+    /**
+     * Same with V1 and startAfter="185" (non-existing).
+     * Expected: One key "190"; isTruncated true.
+     */
     @Test
     public void listUntilPenultimateV1ShouldIndicateTruncatedWithNonExistingStartAfterKey() {
         listUntilPenultimateShouldIndicateTruncated(V1, "185");
@@ -127,6 +151,10 @@ public class ListObjectsTests extends S3TestBase {
     public static final String AFTER_SURROGATES = "\uFB80";
     public static final String CP_MAX = "\uDBFF\uDFFF";
 
+    /**
+     * Puts objects with keys containing BMP and non-BMP (surrogate) codepoints; lists and checks sort order.
+     * Expected: Keys are returned in UTF-8 binary order (or UTF-16 order if quirk); startAfter filtering works accordingly.
+     */
     @Test
     public void thatServerSortsInUtf8Binary() {
         Assume.assumeFalse(target.hasQuirk(KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED));
@@ -154,6 +182,10 @@ public class ListObjectsTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, copies it in-place with metadata replace; checks LIST and HEAD ETags.
+     * Expected: Copy preserves content so ETag unchanged; LIST V1/V2 return same ETag (or "" if quirk ETAG_EMPTY_AFTER_COPY_OBJECT).
+     */
     @Test
     public void listReturnsSameEtagAsCopyObject() {
         var putResponse = bucket.putObject("key", "body");
@@ -188,12 +220,20 @@ public class ListObjectsTests extends S3TestBase {
         }
     }
 
+    /**
+     * Lists objects on an empty bucket (V1 and V2).
+     * Expected: Both return empty list of keys.
+     */
     @Test
     public void testListEmpty() {
         assertEquals(List.of(), bucket.listObjectKeys(V1));
         assertEquals(List.of(), bucket.listObjectKeys(V2));
     }
 
+    /**
+     * Puts three objects ("a","l","z") and lists with V1 and V2.
+     * Expected: Both return keys in order ["a","l","z"].
+     */
     @Test
     public void testList() {
         var keys = Arrays.asList("a", "l", "z");
@@ -221,6 +261,10 @@ public class ListObjectsTests extends S3TestBase {
         assertEquals(expectedKeys, actualKeys);
     }
 
+    /**
+     * Puts objects with keys "a","c","z" and lists with ListObjects V1.
+     * Expected: Keys returned in UTF-8 binary order: ["a","c","z"].
+     */
     @Test
     public void testListObjectsV1() {
         validateListObjects(
@@ -232,6 +276,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with V1 when a key contains comma ("z,a"); uses URL encoding.
+     * Expected: Keys returned in UTF-8 order including "z,a".
+     */
     @Test
     public void testListObjectsV1EvilKeyWithUrlEncode() {
         validateListObjects(
@@ -243,6 +291,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Same keys as above; validates V1 listing without relying on URL decode behavior.
+     * Expected: Keys ["a","c","z,a"] in order.
+     */
     @Test
     public void testListObjectsV1EvilKeyNoUrlDecode() {
         validateListObjects(
@@ -254,6 +306,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Puts objects "a","c","z" and lists with ListObjects V2.
+     * Expected: Keys ["a","c","z"] in UTF-8 binary order.
+     */
     @Test
     public void testListObjectsV2() {
         validateListObjects(
@@ -266,6 +322,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with V2 when key "z,a" exists; URL encoding.
+     * Expected: "z,a" included in listed keys in correct order.
+     */
     @Test
     public void testListObjectsV2EvilKeyWithUrlEncode() {
         validateListObjects(
@@ -278,6 +338,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Same as above for V2 without URL encode; key "z,a" present.
+     * Expected: Keys ["a","c","z,a"].
+     */
     @Test
     public void testListObjectsV2EvilKeyNoUrlEncode() {
         validateListObjects(
@@ -290,6 +354,10 @@ public class ListObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Puts "A/B", then lists V1 with marker="A/C" (after "A/B" in key space).
+     * Expected: Not truncated; contents empty (no keys after marker in range).
+     */
     @Test
     public void testListObjectsAfterKeySpaceWithSeparator() {
         bucket.putObject("A/B", "content");
@@ -302,6 +370,10 @@ public class ListObjectsTests extends S3TestBase {
         assertTrue(result.contents().isEmpty());
     }
 
+    /**
+     * Puts "Z/A"; lists V1 with prefix="Z" and marker="A/C" (marker before prefix range).
+     * Expected: Not truncated; one content "Z/A" returned (marker does not restrict prefix match).
+     */
     @Test
     public void testListObjectsWithMarkerBeforePrefix() {
         bucket.putObject("Z/A", "content");
@@ -314,6 +386,10 @@ public class ListObjectsTests extends S3TestBase {
         assertEquals(1, result.contents().size());
     }
 
+    /**
+     * Puts "A/A"; lists V1 with prefix="A/" and marker="Z/" (marker after prefix).
+     * Expected: No contents (marker is past prefix range); not truncated.
+     */
     @Test
     public void testListObjectsWithMarkerAfterPrefix() {
         bucket.putObject("A/A", "content");

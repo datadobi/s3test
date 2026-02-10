@@ -37,6 +37,10 @@ public class PutObjectTests extends S3TestBase {
     public PutObjectTests() throws IOException {
     }
 
+    /**
+     * Puts an object "foo" with body "bar" and checks HEAD.
+     * Expected: contentLength 3; HEAD ETag matches put response ETag.
+     */
     @Test
     public void testPutObject() {
         var putResponse = bucket.putObject("foo", "bar");
@@ -45,6 +49,10 @@ public class PutObjectTests extends S3TestBase {
         assertEquals(putResponse.eTag(), headResponse.eTag());
     }
 
+    /**
+     * Puts an empty object "foo" (zero-length body).
+     * Expected: HEAD contentLength 0; ETag matches put response.
+     */
     @Test
     public void testPutEmptyObject() {
         var putResponse = bucket.putObject("foo", "");
@@ -53,6 +61,10 @@ public class PutObjectTests extends S3TestBase {
         assertEquals(putResponse.eTag(), headResponse.eTag());
     }
 
+    /**
+     * Puts an object, then overwrites it with different content.
+     * Expected: Second put succeeds; GET returns new content and new ETag; ETags differ.
+     */
     @Test
     public void thatPutObjectCanUpdate() throws Exception {
         var key = "key";
@@ -85,6 +97,10 @@ public class PutObjectTests extends S3TestBase {
 
     }
 
+    /**
+     * Puts an object with Content-Encoding: gzip and binary gzip body.
+     * Expected: Object stored as-is; GET returns same bytes and Content-Encoding: gzip.
+     */
     @Test
     public void thatServerAcceptsContentEncodingGzip() throws Exception {
         var xml = "<root></root>";
@@ -109,6 +125,10 @@ public class PutObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object with custom Content-Encoding "dd-plain-no-encoding".
+     * Expected: Object stored; GET returns same content and contentEncoding header.
+     */
     @Test
     public void thatServerAcceptsArbitraryContentEncoding() throws Exception {
         var xml = "<root></root>";
@@ -129,6 +149,10 @@ public class PutObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an empty object with key "content-type/" and Content-Type "text/empty".
+     * Expected: GET returns Content-Type "text/empty" (unless CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH).
+     */
     @Test
     public void canSetContentTypeOnEmptyObjectWithKeyContainingTrailingSlash() throws IOException {
 
@@ -148,6 +172,10 @@ public class PutObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, then overwrites with same content but different user metadata.
+     * Expected: LastModified from HEAD increases after second put.
+     */
     @Test
     public void thatUpdateMetadataUsingPutObjectAffectsLastModifiedTime() throws Exception {
         var key = "key";
@@ -172,6 +200,10 @@ public class PutObjectTests extends S3TestBase {
         assertNotEquals("PutObject with different user metadata should change LastModified", info1.lastModified(), info2.lastModified());
     }
 
+    /**
+     * Puts an object, then overwrites with different content after a short delay.
+     * Expected: ETag and LastModified both change after second put.
+     */
     @Test
     public void thatUpdateDataUsingPutObjectAffectsLastModifiedTime() throws Exception {
         var key = "key";

@@ -35,6 +35,11 @@ public class ConditionalRequestTests extends S3TestBase {
     public ConditionalRequestTests() throws IOException {
     }
 
+    /**
+     * Puts an object, then attempts overwrite with If-None-Match: * (create-only semantics).
+     * Expected: First put succeeds; second put either fails with 412 Precondition Failed (object exists)
+     * or 501 if unsupported; if it wrongly succeeds, GET returns new content and test fails.
+     */
     @Test
     public void thatConditionalPutIfNoneMatchStarWorks() throws IOException, InterruptedException {
         bucket.putObject("object", "hello");
@@ -67,6 +72,10 @@ public class ConditionalRequestTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, then attempts overwrite with If-None-Match: "<etag>" (create-only if etag differs).
+     * Expected: Overwrite fails with 412 (or 501 if unsupported); object content remains unchanged.
+     */
     @Test
     public void thatConditionalPutIfNoneMatchEtagWorks() throws IOException, InterruptedException {
         var initialPutResponse = bucket.putObject(
@@ -102,6 +111,10 @@ public class ConditionalRequestTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, then overwrites with If-Match: "<etag>" (update-only if etag matches).
+     * Expected: Overwrite succeeds; GET returns new content and new ETag; or 412/501 if precondition fails.
+     */
     @Test
     public void thatConditionalPutIfMatchEtagWorks() throws IOException, InterruptedException {
         var initialPutResponse = bucket.putObject("object", "hello");

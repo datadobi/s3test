@@ -36,6 +36,10 @@ public class GetObjectTests extends S3TestBase {
     public GetObjectTests() throws IOException {
     }
 
+    /**
+     * Puts an object and retrieves it with GET.
+     * Expected: GetObject returns the full body; content matches original string "Hello, World!".
+     */
     @Test
     public void testGetObject() throws IOException {
         var fullContent = "Hello, World!";
@@ -47,6 +51,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an empty object and retrieves it with GET.
+     * Expected: GetObject returns 0 bytes; response contentLength is 0.
+     */
     @Test
     public void testGetEmptyObject() throws IOException {
         var emptyContent = "";
@@ -59,6 +67,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Calls GetObject for a key that does not exist.
+     * Expected: S3Exception with HTTP status 404 (Not Found).
+     */
     @Test
     public void testGetKeyThatDoesNotExist() throws IOException {
         try (var objectInputStream = bucket.getObject("foo")) {
@@ -68,6 +80,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Gets a byte range (bytes 7 to end) of an object using Range header.
+     * Expected: Response body is "World!"; Content-Range and Content-Length match the range.
+     */
     @Test
     public void testGetPartial() throws IOException {
         var fullContent = "Hello, World!";
@@ -89,6 +105,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Requests a byte range that starts beyond the object size (e.g. bytes 200-).
+     * Expected: S3Exception with HTTP status 416 (Range Not Satisfiable).
+     */
     @Test
     public void testGetPartialUnsatisfiable() {
         var fullContent = "Hello, World!";
@@ -102,6 +122,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Gets a byte range with both start and end (bytes 0-4).
+     * Expected: Response body is "Hello"; Content-Range and Content-Length are correct.
+     */
     @Test
     public void testGetPartialWithEndPosition() throws IOException {
         var fullContent = "Hello, World!";
@@ -123,6 +147,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Gets a middle byte range (bytes 7-11) of "Hello, World!".
+     * Expected: Response body is "World"; Content-Range and Content-Length match.
+     */
     @Test
     public void testGetPartialMiddleRange() throws IOException {
         var fullContent = "Hello, World!";
@@ -144,6 +172,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Gets the last N bytes using suffix-length range (e.g. bytes=-6 for last 6 bytes).
+     * Expected: Response body is "World!" (last 6 bytes of "Hello, World!").
+     */
     @Test
     public void testGetPartialLastBytes() throws IOException {
         var fullContent = "Hello, World!";
@@ -158,6 +190,10 @@ public class GetObjectTests extends S3TestBase {
         }
     }
 
+    /**
+     * Requests a range with end position beyond object size (e.g. bytes 10-100).
+     * Expected: Server returns from start to end of object only; body is "ld!" (bytes 10-12).
+     */
     @Test
     public void testGetPartialBeyondEnd() throws IOException {
         var fullContent = "Hello, World!";

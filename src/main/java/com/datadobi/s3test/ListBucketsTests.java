@@ -32,6 +32,10 @@ public class ListBucketsTests extends S3TestBase {
     public ListBucketsTests() throws IOException {
     }
 
+    /**
+     * Calls ListBuckets and checks the response Date header.
+     * Expected: Response includes a "Date" header; parsed value is within ~30 seconds of request time (valid RFC 1123).
+     */
     @Test
     public void listBucketsResponsesShouldReturnValidDateHeader() {
         var timeOfRequest = Instant.now();

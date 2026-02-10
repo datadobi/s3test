@@ -37,6 +37,10 @@ public class PrefixDelimiterTests extends S3TestBase {
     public PrefixDelimiterTests() throws IOException {
     }
 
+    /**
+     * Lists with prefix="a/", delimiter="/", maxKeys=10. Bucket has a, a/b/0..9, a/c/0..9, a/d.
+     * Expected: contents = ["a/d"]; commonPrefixes = ["a/b/", "a/c/"]; not truncated.
+     */
     @Test
     public void testSimple() {
         bucket.putObject("a", "a");
@@ -64,6 +68,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         assertFalse(response.isTruncated());
     }
 
+    /**
+     * Lists with prefix="a/b/", delimiter="/". All keys under a/b/ (0..9).
+     * Expected: contents = all a/b/0..9; commonPrefixes empty; not truncated.
+     */
     @Test
     public void testTruncatedPrefix() {
         bucket.putObject("a", "a");
@@ -90,6 +98,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         assertFalse(result.isTruncated());
     }
 
+    /**
+     * Lists with prefix="a/" and no delimiter; uses continuation tokens across pages.
+     * Expected: First page a/b/0..9, second a/c/0..9, third a/d; pagination via nextContinuationToken.
+     */
     @Test
     public void testPrefixOnly() {
         bucket.putObject("a", "a");
@@ -129,6 +141,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with prefix="a/", delimiter="/", maxKeys=10; many objects and common prefixes.
+     * Expected: Multiple pages; contents and commonPrefixes match expected batches; truncation/continuation correct.
+     */
     @Test
     public void testMorePrefixesThanMaxKeys() {
         for (var i = 0; i < 15; i++) {
@@ -178,6 +194,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with prefix=null, delimiter="/"; bucket has a, d, b/0..499, c/0..499.
+     * Expected: First page contents ["a","d"], commonPrefixes ["b/","c/"] (top-level listing).
+     */
     @Test
     public void testNullPrefix() {
         bucket.putObject("a", "a");
@@ -205,6 +225,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with prefix="/", delimiter="/". No keys start with "/".
+     * Expected: Empty contents and empty commonPrefixes.
+     */
     @Test
     public void testSlashPrefix() {
         bucket.putObject("a", "a");
@@ -230,6 +254,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         );
     }
 
+    /**
+     * Lists with prefix="b/", delimiter="/"; bucket has object "b/" and b/0..199, c/0..9, d.
+     * Expected: First page includes "b/" and b/0, b/1, b/10, etc. (lexicographic order); commonPrefixes empty.
+     */
     @Test
     public void testPrefixMatchingObjectKey() {
         bucket.putObject("a", "a");
@@ -258,6 +286,10 @@ public class PrefixDelimiterTests extends S3TestBase {
         );
     }
 
+    /**
+     * Single object with key "b/" (trailing slash); list with prefix="", delimiter="/".
+     * Expected: No contents; commonPrefixes = ["b/"] (key "b/" reported as common prefix).
+     */
     @Test
     public void testSingleObjectIsReportedAsCommonPrefix() {
         // Intentionally create an object with a key matching the prefix to see if it's returned or not

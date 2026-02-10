@@ -37,6 +37,10 @@ public class MultiPartUploadTests extends S3TestBase {
     public MultiPartUploadTests() throws IOException {
     }
 
+    /**
+     * Creates a multipart upload with 11 parts (varying sizes ≥5MB), completes it, then retrieves via GET (or per-part GET if supported).
+     * Expected: Object is stored; total bytes retrieved equals uploaded size; if partNumber supported, part count and per-part sizes match (or quirks for MULTIPART_SIZES_NOT_KEPT/GET_OBJECT_PARTCOUNT_NOT_SUPPORTED).
+     */
     @Test
     public void thatMultipartRetrievesOriginalParts() throws Exception {
         // generate multipart data
