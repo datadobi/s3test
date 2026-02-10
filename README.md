@@ -27,10 +27,44 @@ This can be launched either from an IDE or by using `gradlew run --console=plain
 
 Individual test cases can be explictly included or excluded using the `-i`/`--include` and `-e`/`--exclude` command line arguments.
 
+Additional configuration can be loaded using the `-c`/`--config` command line argument followed by a path to a configuration file (see below).
+
 ### Running from an IDE
 
 Since each test is a JUnit test case, tests can be easily executed from your IDE of choice.
 Instructions on how to run JUnit tests from IDEs is out of scope for this README.
+
+## Configuration File
+
+The configuration file is a TOML file that specifies server quirks to accommodate non-standard S3 implementations.
+
+### Syntax
+
+```toml
+quirks = [
+    "QUIRK_NAME_1",
+    "QUIRK_NAME_2"
+]
+```
+
+### Available Quirks
+
+- `CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH` - The server drops user specified Content-Type values when the object key ends with '/'
+- `ETAG_EMPTY_AFTER_COPY_OBJECT` - After copying an object, an empty ETag is returned
+- `GET_OBJECT_PARTCOUNT_NOT_SUPPORTED` - The server does not return `x-amz-mp-parts-count`
+- `GET_OBJECT_PART_NOT_SUPPORTED` - The server does not support downloading individual parts
+- `KEYS_ARE_SORTED_IN_UTF16_BINARY_ORDER` - The server returns object keys in UTF-16 lexicographical order instead of UTF-8
+- `KEYS_WITH_CODEPOINT_MIN_REJECTED` - Server rejects U+0001
+- `KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED` - Server rejects keys containing code points that are greater than U+FFFF
+- `KEYS_WITH_INVALID_UTF8_NOT_REJECTED` - Server does not perform strict UTF-8 validation
+- `KEYS_WITH_NULL_ARE_TRUNCATED` - The server truncates object keys containing null bytes (typically implementations that use a language with zero terminated strings)
+- `KEYS_WITH_NULL_NOT_REJECTED` - The server does not reject object keys containing null bytes
+- `KEYS_WITH_SLASHES_CREATE_IMPLICIT_OBJECTS` - The server behaves similarly to S3ExpressOneZone directory buckets
+- `MULTIPART_SIZES_NOT_KEPT` - After completing a multipart upload, the server does not guarantee that the size or number of parts uploaded by the client will be preserved
+- `PUT_OBJECT_IF_MATCH_ETAG_NOT_SUPPORTED` - The server does not support `If-Match: <etag>` (generic HTTP feature not supported by AWS S3)
+- `PUT_OBJECT_IF_NONE_MATCH_ETAG_NOT_SUPPORTED` - The server does not support `If-None-Match: <etag>` (generic HTTP feature not supported by AWS S3)
+- `PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED` - The server does not support `If-None-Match: *`
+- `STORAGE_CLASS_NOT_KEPT` - The server does not retain (or return) the storage class specified by the client
 
 ## Logging HTTP Requests
 
