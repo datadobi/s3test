@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.UUID;
 
 public class S3TestBase {
     public static final Config DEFAULT_CONFIG;
@@ -61,6 +62,9 @@ public class S3TestBase {
 
     private Description currentTest;
 
+    /** When cleanup fails, next test uses this bucket instead of target.bucket(); cleared after use. */
+    private static volatile String cleanupFailedNextBucket = null;
+
     @Rule(order = 0)
     public TestWatcher testName = new TestWatcher() {
         @Override
@@ -92,9 +96,16 @@ public class S3TestBase {
 
         s3 = S3.createClient(target);
 
-        this.bucket = new S3Bucket(s3, target.bucket());
+        String bucketName = cleanupFailedNextBucket != null ? cleanupFailedNextBucket : target.bucket();
+        this.bucket = new S3Bucket(s3, bucketName);
         if (target.createBucket()) {
             bucket.create();
+        }
+        // If we used a fallback bucket, keep using new buckets for subsequent tests (original may still exist).
+        if (cleanupFailedNextBucket != null) {
+            cleanupFailedNextBucket = "s3test-" + UUID.randomUUID();
+        } else {
+            cleanupFailedNextBucket = null;
         }
 
         if (!CAPTURE_SETUP) {
@@ -108,9 +119,15 @@ public class S3TestBase {
             WIRE_LOGGER.stop();
         }
 
-        S3.clearBucket(s3, target.bucket());
-        if (target.createBucket()) {
-            bucket.delete();
+        try {
+            S3.clearBucket(s3, bucket.name());
+            if (target.createBucket()) {
+                bucket.delete();
+            }
+        } catch (Throwable t) {
+            // Cleanup failed (e.g. bucket not empty): use a new bucket for next test and do not
+            // fail this test — only the test method's result counts.
+            cleanupFailedNextBucket = "s3test-" + UUID.randomUUID();
         }
 
         s3.close();
