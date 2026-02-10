@@ -54,7 +54,7 @@ public class ConditionalRequestTests extends S3TestBase {
             fail("PutObject using 'If-None-Match: *' should fail if object already exists");
         } catch (S3Exception e) {
             // Should have gotten 412 Precondition Failed
-            assertEquals(412, e.statusCode());
+            assertEquals("HTTP error should be precondition failed", 412, e.statusCode());
         }
     }
 
@@ -74,6 +74,9 @@ public class ConditionalRequestTests extends S3TestBase {
                 "bar"
         );
 
+        // The etag should have changed compared to the initial one since the object content changed
+        assertNotEquals("Object etag should have changed", overwritePutResponse.eTag(), initialPutResponse.eTag());
+
         // Read back the object
         GetObjectResponse getResponse;
         String content;
@@ -83,10 +86,8 @@ public class ConditionalRequestTests extends S3TestBase {
         }
 
         // The contents and etag should match those from the overwrite request
-        assertEquals("bar", content);
-        assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
-        // The etag should have changed compared to the initial one since the object content changed
-        assertNotEquals(overwritePutResponse.eTag(), initialPutResponse.eTag());
+        assertEquals("Object content should match overwrite request", "bar", content);
+        assertEquals("Object etag should match overwrite response", overwritePutResponse.eTag(), getResponse.eTag());
 
         try {
             // Overwrite the object with `If-None-Match: <etag>` using the current etag value.
@@ -99,7 +100,7 @@ public class ConditionalRequestTests extends S3TestBase {
             fail("PutObject using 'If-None-Match: \"<etag>\"' should fail if object etag matches current etag");
         } catch (S3Exception e) {
             // Should have gotten 412 Precondition Failed
-            assertEquals(412, e.statusCode());
+            assertEquals("HTTP error should be precondition failed", 412, e.statusCode());
         }
     }
 
@@ -119,6 +120,9 @@ public class ConditionalRequestTests extends S3TestBase {
                 "bar"
         );
 
+        // The etag should have changed compared to the initial one since the object content changed
+        assertNotEquals("Object etag should have changed", overwritePutResponse.eTag(), initialPutResponse.eTag());
+
         // Read back the object
         GetObjectResponse getResponse;
         String content;
@@ -128,10 +132,8 @@ public class ConditionalRequestTests extends S3TestBase {
         }
 
         // The contents and etag should match those from the overwrite request
-        assertEquals("bar", content);
-        assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
-        // The etag should have changed compared to the initial one since the object content changed
-        assertNotEquals(overwritePutResponse.eTag(), initialPutResponse.eTag());
+        assertEquals("Object content should match overwrite request", "bar", content);
+        assertEquals("Object etag should match overwrite response", overwritePutResponse.eTag(), getResponse.eTag());
 
         try {
             // Overwrite the object with `If-Match: <etag>` using a stale etag value.
@@ -144,7 +146,7 @@ public class ConditionalRequestTests extends S3TestBase {
             fail("PutObject using 'If-Match: \"<etag>\"' should fail if object etag does not match current etag");
         } catch (S3Exception e) {
             // Should have gotten 412 Precondition Failed
-            assertEquals(412, e.statusCode());
+            assertEquals("HTTP error should be precondition failed", 412, e.statusCode());
         }
     }
 }
