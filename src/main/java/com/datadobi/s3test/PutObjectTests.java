@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
-import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH;
+import static com.datadobi.s3test.s3.Quirk.CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH;
 import static org.junit.Assert.*;
 
 public class PutObjectTests extends S3TestBase {
@@ -132,7 +132,7 @@ public class PutObjectTests extends S3TestBase {
     @Test
     public void canSetContentTypeOnEmptyObjectWithKeyContainingTrailingSlash() throws IOException {
 
-        Assume.assumeFalse(target.hasRestrictions(CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH));
+        Assume.assumeFalse(target.hasQuirk(CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH));
 
         var data = new byte[0];
 

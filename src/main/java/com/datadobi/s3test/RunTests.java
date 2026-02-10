@@ -18,6 +18,7 @@
  */
 package com.datadobi.s3test;
 
+import com.datadobi.s3test.s3.Config;
 import com.datadobi.s3test.s3.S3TestBase;
 import com.datadobi.s3test.s3.ServiceDefinition;
 import com.datadobi.s3test.s3.WireLogger;
@@ -44,6 +45,7 @@ public class RunTests {
     public static void main(String[] args) throws InitializationError, IOException {
         List<Pattern> include = new ArrayList<>();
         List<Pattern> exclude = new ArrayList<>();
+        Path configPath = null;
         Path logPath = null;
 
         int i = 0;
@@ -54,6 +56,7 @@ public class RunTests {
             }
 
             switch (arg) {
+                case "-c", "--config" -> configPath = Path.of(args[++i]);
                 case "-e", "--exclude" -> exclude.add(Pattern.compile(args[++i]));
                 case "-i", "--include" -> include.add(Pattern.compile(args[++i]));
                 case "-l", "--log" -> logPath = Path.of(args[++i]);
@@ -63,15 +66,26 @@ public class RunTests {
         if (i == args.length) {
             System.err.println("Usage: RunTests [options] S3_URI");
             System.err.println("Options:");
+            System.err.println("  -c --config PATH        Load additional configuration from PATH");
             System.err.println("  -e --exclude PATTERN    Exclude tests matching PATTERN");
             System.err.println("  -i --include PATTERN    Include tests matching PATTERN");
             System.err.println("  -l --log PATH           Write test error output and HTTP wire trace to PATH");
             System.exit(1);
         }
 
+        Config config;
+        if (configPath != null) {
+            config = Config.loadFromToml(configPath);
+        } else {
+            config = Config.AWS_CONFIG;
+        }
+
         var target = ServiceDefinition.fromURI(args[i]);
 
-        S3TestBase.DEFAULT = target;
+
+        target = target.toBuilder().quirks(config.quirks()).build();
+
+        S3TestBase.DEFAULT_SERVICE = target;
 
         System.out.println("S3 tests: " + target.host());
         System.out.println();

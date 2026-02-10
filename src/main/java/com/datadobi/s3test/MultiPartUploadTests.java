@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.*;
+import static com.datadobi.s3test.s3.Quirk.*;
 import static org.junit.Assert.*;
 
 public class MultiPartUploadTests extends S3TestBase {
@@ -88,16 +88,16 @@ public class MultiPartUploadTests extends S3TestBase {
 
         Integer receivePartitionCount = null;
 
-        if (!target.hasRestrictions(MULTIPART_DOWNLOAD_BROKEN)) {
+        if (!target.hasQuirk(GET_OBJECT_PART_NOT_SUPPORTED)) {
             receivePartitionCount = objectMetadata.partsCount();
             if (receivePartitionCount != null) {
                 assertTrue(
-                        target.hasRestrictions(MULTIPART_SIZES_NOT_KEPT) ||
+                        target.hasQuirk(MULTIPART_SIZES_NOT_KEPT) ||
                                 receivePartitionCount == partitionCount
                 );
-                assertFalse(target.hasRestrictions(PARTCOUNT_NOT_SUPPORTED));
+                assertFalse(target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
             } else {
-                assertTrue(target.hasRestrictions(PARTCOUNT_NOT_SUPPORTED));
+                assertTrue(target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
             }
         }
 
@@ -112,7 +112,7 @@ public class MultiPartUploadTests extends S3TestBase {
 
                     receivedTotalSize += receivedSize;
 
-                    if (target.hasRestrictions(MULTIPART_SIZES_NOT_KEPT)) {
+                    if (target.hasQuirk(MULTIPART_SIZES_NOT_KEPT)) {
                         assertNotEquals(receivedSize, partitionSize);
                     } else {
                         assertEquals(receivedSize, partitionSize);

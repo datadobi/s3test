@@ -27,8 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
-import static com.datadobi.s3test.s3.ServiceDefinition.Capability.PUT_OBJECT_IF_NONE_MATCH_ETAG_SUPPORTED;
-import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED;
+import static com.datadobi.s3test.s3.Quirk.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -54,13 +53,13 @@ public class ConditionalRequestTests extends S3TestBase {
                 getResponse = response.response();
                 content = new String(response.readAllBytes(), StandardCharsets.UTF_8);
             }
-            if (!target.hasRestrictions(PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED)) {
+            if (!target.hasQuirk(PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED)) {
                 assertEquals("bar", content);
                 assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
                 fail("PutObject using 'If-None-Match: *' should fail if object already exists");
             }
         } catch (S3Exception e) {
-            if (target.hasRestrictions(PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED)) {
+            if (target.hasQuirk(PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED)) {
                 assertEquals(501, e.statusCode());
             } else {
                 assertEquals(412, e.statusCode());
@@ -89,16 +88,16 @@ public class ConditionalRequestTests extends S3TestBase {
                 getResponse = response.response();
                 content = new String(response.readAllBytes(), StandardCharsets.UTF_8);
             }
-            if (target.hasCapabilities(PUT_OBJECT_IF_NONE_MATCH_ETAG_SUPPORTED)) {
+            if (target.hasQuirk(PUT_OBJECT_IF_NONE_MATCH_ETAG_NOT_SUPPORTED)) {
                 assertEquals("bar", content);
                 assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
                 fail("PutObject using 'If-None-Match: \"<etag>\"' should fail if object already exists");
             }
         } catch (S3Exception e) {
-            if (target.hasCapabilities(PUT_OBJECT_IF_NONE_MATCH_ETAG_SUPPORTED)) {
-                assertEquals(412, e.statusCode());
-            } else {
+            if (target.hasQuirk(PUT_OBJECT_IF_NONE_MATCH_ETAG_NOT_SUPPORTED)) {
                 assertEquals(501, e.statusCode());
+            } else {
+                assertEquals(412, e.statusCode());
             }
         }
     }
@@ -122,16 +121,16 @@ public class ConditionalRequestTests extends S3TestBase {
                 getResponse = response.response();
                 content = new String(response.readAllBytes(), StandardCharsets.UTF_8);
             }
-            if (target.hasCapabilities(PUT_OBJECT_IF_NONE_MATCH_ETAG_SUPPORTED)) {
+            if (!target.hasQuirk(PUT_OBJECT_IF_MATCH_ETAG_NOT_SUPPORTED)) {
                 assertEquals("bar", content);
                 assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
                 fail("PutObject using 'If-Match: \"<etag>\"' should fail if object etag does not match");
             }
         } catch (S3Exception e) {
-            if (target.hasCapabilities(PUT_OBJECT_IF_NONE_MATCH_ETAG_SUPPORTED)) {
-                assertEquals(412, e.statusCode());
-            } else {
+            if (!target.hasQuirk(PUT_OBJECT_IF_MATCH_ETAG_NOT_SUPPORTED)) {
                 assertEquals(501, e.statusCode());
+            } else {
+                assertEquals(412, e.statusCode());
             }
         }
     }

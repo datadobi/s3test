@@ -36,7 +36,6 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
 
-import javax.annotation.Nonnull;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -49,7 +48,7 @@ import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.*;
+import static com.datadobi.s3test.s3.Quirk.*;
 import static com.datadobi.s3test.util.InvalidUtf8Encoder.utf8Encode;
 import static com.datadobi.s3test.util.Utf8TestConstants.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -61,11 +60,11 @@ import static org.junit.Assume.assumeTrue;
 /**
  * <p>This test checks that an S3 implementation follows the S3, Unicode and UTF-8 specs.</p>
  *
- * <p>We rely on the sort order of keys, which described in https://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysUsingAPIs.html
+ * <p>We rely on the sort order of keys, which is described in
+ * <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/ListingKeysUsingAPIs.html">ListingKeysUsingAPIs</a>
  * <blockquote>
  * List results are always returned in UTF-8 binary order.
  * </blockquote></p>
- * <p>This means servers need to adhere to all the specs.</p>
  */
 public class ObjectKeyTests extends S3TestBase {
     public ObjectKeyTests() throws IOException {
@@ -86,7 +85,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testKeyNamesWithHighCodePointsAreAccepted() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED));
 
         var clappingHands = utf8Encode(CLAPPING_HANDS);
         var keyPrefix = "high-codepoints-";
@@ -106,7 +105,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void thatPathLikeKeysDontCreateDirectoryObjects() {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_SLASHES_CREATE_IMPLICIT_OBJECTS));
+        assumeFalse(target.hasQuirk(KEYS_WITH_SLASHES_CREATE_IMPLICIT_OBJECTS));
 
         bucket.putObject("a/b/c", "abcd");
 
@@ -116,7 +115,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testSurrogatePairsAreRejected() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
 
         //surrogates in Unicode are a compatibility mechanism intended for UTF-16 encoding.
         //surrogates are always expected to come in pairs (a high surrogate followed by a low surrogate) and one pair maps to one codepoint outside of the BMP
@@ -153,7 +152,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testCodePointMinIsAccepted() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_CODEPOINT_MIN_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_CODEPOINT_MIN_REJECTED));
 
         var key = "min-codepoint-\u0001.key";
         var keyBytes = key.getBytes(UTF_8);
@@ -164,7 +163,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testNullIsRejected() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_NULL_NOT_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_NULL_NOT_REJECTED));
 
         var nullEncoding = new byte[]{0};
 
@@ -179,7 +178,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testOverlongNullIsRejected() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
 
         var nullEncoding = new byte[]{(byte) 0xC0, (byte) 0x80};
 
@@ -194,7 +193,7 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void testOverlongEncodingsAreRejected() throws IOException {
-        assumeFalse(target.hasRestrictions(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_INVALID_UTF8_NOT_REJECTED));
 
         // https://en.wikipedia.org/wiki/UTF-8#Overlong_encodings
         // in theory, any codepoint can be encoded in 4 bytes in UTF-8, even if it _should_ be encoded in less bytes
@@ -245,11 +244,11 @@ public class ObjectKeyTests extends S3TestBase {
 
         for (var equivalentStrings : equivalentStringTuples) {
             var testData = "Content: " + UUID.randomUUID();
-            var status = putObject(target.signingRegion(), testData.getBytes(UTF_8), equivalentStrings.get(0).getBytes(UTF_8));
+            var status = putObject(target.signingRegion(), testData.getBytes(UTF_8), equivalentStrings.getFirst().getBytes(UTF_8));
             assertThat(status).as("putting the object should succeed").matches(s -> s / 100 == 2, "HTTP 2xx status");
 
             //check that we can retrieve
-            var roundTrip = new String(bucket.getObjectContent(equivalentStrings.get(0)), UTF_8);
+            var roundTrip = new String(bucket.getObjectContent(equivalentStrings.getFirst()), UTF_8);
             assertThat(roundTrip).isEqualTo(testData);
 
 
@@ -262,8 +261,8 @@ public class ObjectKeyTests extends S3TestBase {
 
     @Test
     public void thatServerSortsNullInUtf8Order() throws IOException {
-        assumeTrue(target.hasRestrictions(KEYS_WITH_NULL_NOT_REJECTED));
-        assumeFalse(target.hasRestrictions(KEYS_WITH_NULL_ARE_TRUNCATED));
+        assumeTrue(target.hasQuirk(KEYS_WITH_NULL_NOT_REJECTED));
+        assumeFalse(target.hasQuirk(KEYS_WITH_NULL_ARE_TRUNCATED));
 
         var nullEncoding = "\0".getBytes(UTF_8);
         var capitalAEncoding = "A".getBytes(UTF_8);
@@ -388,7 +387,7 @@ public class ObjectKeyTests extends S3TestBase {
 
         var headers = signedReq.headers().entrySet().stream().collect(Collectors.toMap(
                 Map.Entry::getKey,
-                e -> e.getValue().get(0)
+                e -> e.getValue().getFirst()
         ));
         headers.remove("Content-Length");
         headers.remove("Host");

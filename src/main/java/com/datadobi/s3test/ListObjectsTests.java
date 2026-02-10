@@ -35,7 +35,8 @@ import java.util.stream.Collectors;
 
 import static com.datadobi.s3test.s3.S3.ListObjectsVersion.V1;
 import static com.datadobi.s3test.s3.S3.ListObjectsVersion.V2;
-import static com.datadobi.s3test.s3.ServiceDefinition.Restriction.*;
+import static com.datadobi.s3test.s3.Quirk.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
@@ -128,7 +129,7 @@ public class ListObjectsTests extends S3TestBase {
 
     @Test
     public void thatServerSortsInUtf8Binary() {
-        Assume.assumeFalse(target.hasRestrictions(KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED));
+        Assume.assumeFalse(target.hasQuirk(KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED));
 
         bucket.putObject(A, A);
         bucket.putObject(BEFORE_SURROGATES, BEFORE_SURROGATES);
@@ -136,7 +137,7 @@ public class ListObjectsTests extends S3TestBase {
         bucket.putObject(SURROGATE_PAIR1, SURROGATE_PAIR1);
         bucket.putObject(SURROGATE_PAIR2, SURROGATE_PAIR2);
 
-        if (target.hasRestrictions(KEYS_ARE_SORTED_IN_UTF16_BINARY_ORDER)) {
+        if (target.hasQuirk(KEYS_ARE_SORTED_IN_UTF16_BINARY_ORDER)) {
             assertEquals(List.of(A, BEFORE_SURROGATES, SURROGATE_PAIR1, SURROGATE_PAIR2, AFTER_SURROGATES),
                     bucket.listObjectKeys(V2, null, null));
             assertEquals(List.of(SURROGATE_PAIR1, SURROGATE_PAIR2, AFTER_SURROGATES),
@@ -178,23 +179,23 @@ public class ListObjectsTests extends S3TestBase {
         var listV2Response = bucket.listObjectsV2(null, null);
 
         // Listing should return the same etag
-        if (target.hasRestrictions(ETAG_EMPTY_AFTER_COPY_OBJECT)) {
-            assertEquals("\"\"", listV1Response.contents().get(0).eTag());
-            assertEquals("\"\"", listV2Response.contents().get(0).eTag());
+        if (target.hasQuirk(ETAG_EMPTY_AFTER_COPY_OBJECT)) {
+            assertEquals("\"\"", listV1Response.contents().getFirst().eTag());
+            assertEquals("\"\"", listV2Response.contents().getFirst().eTag());
         } else {
-            assertEquals(copyResponse.copyObjectResult().eTag(), listV1Response.contents().get(0).eTag());
-            assertEquals(copyResponse.copyObjectResult().eTag(), listV2Response.contents().get(0).eTag());
+            assertEquals(copyResponse.copyObjectResult().eTag(), listV1Response.contents().getFirst().eTag());
+            assertEquals(copyResponse.copyObjectResult().eTag(), listV2Response.contents().getFirst().eTag());
         }
     }
 
     @Test
-    public void testListEmpty() throws IOException {
+    public void testListEmpty() {
         assertEquals(List.of(), bucket.listObjectKeys(V1));
         assertEquals(List.of(), bucket.listObjectKeys(V2));
     }
 
     @Test
-    public void testList() throws IOException {
+    public void testList() {
         var keys = Arrays.asList("a", "l", "z");
         for (var key : keys) {
             bucket.putObject(key, key);
@@ -298,12 +299,7 @@ public class ListObjectsTests extends S3TestBase {
         );
 
         assertFalse(result.isTruncated());
-
-        if (target.hasRestrictions(LIST_OBJECTS_CAN_RETURN_INVALID_KEY)) {
-            assertFalse(result.contents().isEmpty());
-        } else {
-            assertTrue(result.contents().isEmpty());
-        }
+        assertTrue(result.contents().isEmpty());
     }
 
     @Test

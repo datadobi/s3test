@@ -27,16 +27,28 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 
 public class S3TestBase {
-    public static ServiceDefinition DEFAULT;
+    public static final Config DEFAULT_CONFIG;
+    public static ServiceDefinition DEFAULT_SERVICE;
     public static WireLogger WIRE_LOGGER;
 
+    private static final boolean CAPTURE_SETUP = Boolean.parseBoolean(Objects.requireNonNullElse(System.getenv("S3TEST_WIRELOG_SETUP"), "false"));
+    private static final boolean CAPTURE_TEARDOWN = Boolean.parseBoolean(Objects.requireNonNullElse(System.getenv("S3TEST_WIRELOG_TEARDOWN"), "false"));
+
     static {
+        String config = System.getenv("S3TEST_CONFIG");
+        if (config != null) {
+            DEFAULT_CONFIG = Config.loadFromToml(Path.of(config));
+        } else {
+            DEFAULT_CONFIG = Config.AWS_CONFIG;
+        }
+
         String testUri = System.getenv("S3TEST_URI");
         if (testUri != null) {
             try {
-                DEFAULT = ServiceDefinition.fromURI(testUri);
+                DEFAULT_SERVICE = ServiceDefinition.fromURI(testUri).toBuilder().quirks(DEFAULT_CONFIG.quirks()).build();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -44,6 +56,7 @@ public class S3TestBase {
 
         String wireLogPath = System.getenv("S3TEST_WIRELOG");
         WIRE_LOGGER = new WireLogger(wireLogPath == null ? null : Path.of(wireLogPath));
+
     }
 
     private Description currentTest;
@@ -61,7 +74,7 @@ public class S3TestBase {
     protected S3Bucket bucket;
 
     public S3TestBase() throws IOException {
-        this(DEFAULT != null ? DEFAULT : ServiceDefinition.fromS3Profile("default"));
+        this(DEFAULT_SERVICE != null ? DEFAULT_SERVICE : ServiceDefinition.fromS3Profile("default"));
     }
 
     public S3TestBase(ServiceDefinition parameter) {
@@ -70,6 +83,10 @@ public class S3TestBase {
 
     @Before
     public final void setUp() throws IOException {
+        if (CAPTURE_SETUP) {
+            WIRE_LOGGER.start(currentTest);
+        }
+
         s3 = S3.createClient(target);
 
         this.bucket = new S3Bucket(s3, target.bucket());
@@ -77,12 +94,16 @@ public class S3TestBase {
             bucket.create();
         }
 
-        WIRE_LOGGER.start(currentTest);
+        if (!CAPTURE_SETUP) {
+            WIRE_LOGGER.start(currentTest);
+        }
     }
 
     @After
     public final void tearDown() {
-        WIRE_LOGGER.stop();
+        if (!CAPTURE_TEARDOWN) {
+            WIRE_LOGGER.stop();
+        }
 
         S3.clearBucket(s3, target.bucket());
         if (target.createBucket()) {
@@ -90,5 +111,9 @@ public class S3TestBase {
         }
 
         s3.close();
+
+        if (CAPTURE_TEARDOWN) {
+            WIRE_LOGGER.stop();
+        }
     }
 }

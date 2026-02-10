@@ -48,6 +48,7 @@ dependencies {
     implementation libs.log4j.slf4j
     implementation libs.jackson.yaml
     implementation libs.commons.logging
+    implementation libs.tomlj
 
     implementation libs.junit
 }
