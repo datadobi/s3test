@@ -41,36 +41,16 @@ public class PutObjectTests extends S3TestBase {
     public void testPutObject() {
         var putResponse = bucket.putObject("foo", "bar");
         var headResponse = bucket.headObject("foo");
-        var actualContentLength = headResponse.contentLength();
-        assertEquals(
-                String.format("Content length mismatch (expected: %s, received: %s)", Long.valueOf(3), actualContentLength),
-                Long.valueOf(3),
-                actualContentLength
-        );
-        var actualETag = headResponse.eTag();
-        assertEquals(
-                String.format("ETag mismatch (expected: %s, received: %s)", putResponse.eTag(), actualETag),
-                putResponse.eTag(),
-                actualETag
-        );
+        assertEquals("Content length mismatch", Long.valueOf(3), headResponse.contentLength());
+        assertEquals("ETag should match PutObject response", putResponse.eTag(), headResponse.eTag());
     }
 
     @Test
     public void testPutEmptyObject() {
         var putResponse = bucket.putObject("foo", "");
         var headResponse = bucket.headObject("foo");
-        var actualContentLength = headResponse.contentLength();
-        assertEquals(
-                String.format("Content length mismatch for empty object (expected: %s, received: %s)", Long.valueOf(0), actualContentLength),
-                Long.valueOf(0),
-                actualContentLength
-        );
-        var actualETag = headResponse.eTag();
-        assertEquals(
-                String.format("ETag mismatch (expected: %s, received: %s)", putResponse.eTag(), actualETag),
-                putResponse.eTag(),
-                actualETag
-        );
+        assertEquals("Empty object should have content length of 0", Long.valueOf(0), headResponse.contentLength());
+        assertEquals("ETag should match PutObject response", putResponse.eTag(), headResponse.eTag());
     }
 
     @Test
@@ -82,47 +62,23 @@ public class PutObjectTests extends S3TestBase {
         var eTag1 = putObjectResult1.eTag();
 
         try (var object = bucket.getObject(key)) {
-            var actualETag = object.response().eTag();
-            assertEquals(
-                    String.format("ETag mismatch after first put (expected: %s, received: %s)", eTag1, actualETag),
-                    eTag1,
-                    actualETag
-            );
+            assertEquals("ETag should match first put response", eTag1, object.response().eTag());
 
             var content = new String(object.readAllBytes(), StandardCharsets.UTF_8);
-            assertEquals(
-                    String.format("Content mismatch after first put (expected: %s, received: %s)", content1, content),
-                    content1,
-                    content
-            );
+            assertEquals("Content should match first put content", content1, content);
         }
 
         var content2 = "bb";
         var putObjectResult2 = bucket.putObject(key, content2);
-
-        assertNotNull("PutObject result should not be null", putObjectResult2);
         var eTag2 = putObjectResult2.eTag();
 
-        assertNotEquals(
-                String.format("ETags should differ after updating object (first: %s, second: %s)", eTag1, eTag2),
-                eTag1,
-                eTag2
-        );
+        assertNotEquals("ETag should change after content update", eTag1, eTag2);
 
         try (var object = bucket.getObject(key)) {
-            var actualETag = object.response().eTag();
-            assertEquals(
-                    String.format("ETag mismatch after second put (expected: %s, received: %s)", eTag2, actualETag),
-                    eTag2,
-                    actualETag
-            );
+            assertEquals("ETag should match value from second PutObject response", object.response().eTag(), eTag2);
 
             var content = new String(object.readAllBytes(), StandardCharsets.UTF_8);
-            assertEquals(
-                    String.format("Content mismatch after second put (expected: %s, received: %s)", content2, content),
-                    content2,
-                    content
-            );
+            assertEquals("Content should match second PutObject content", content2, content);
         }
 
     }
@@ -146,13 +102,8 @@ public class PutObjectTests extends S3TestBase {
 
         try (var object = bucket.getObject("content-encoding-gzip")) {
             var bytes = object.readAllBytes();
-            var actualEncoding = object.response().contentEncoding();
-            assertEquals(
-                    String.format("Content encoding mismatch (expected: %s, received: %s)", "gzip", actualEncoding),
-                    "gzip",
-                    actualEncoding
-            );
-            assertArrayEquals("Gzipped data should match", data, bytes);
+            assertEquals("Retrieved content encoding should match value from PutObject", "gzip", object.response().contentEncoding());
+            assertArrayEquals("Retrieved data should match uploaded gzip data", data, bytes);
         }
     }
 
@@ -171,18 +122,8 @@ public class PutObjectTests extends S3TestBase {
 
         try (var object = bucket.getObject("content-encoding-unknown")) {
             var bytes = object.readAllBytes();
-            var actualEncoding = object.response().contentEncoding();
-            assertEquals(
-                    String.format("Content encoding mismatch (expected: %s, received: %s)", "dd-plain-no-encoding", actualEncoding),
-                    "dd-plain-no-encoding",
-                    actualEncoding
-            );
-            var actualContent = new String(bytes, StandardCharsets.UTF_8);
-            assertEquals(
-                    String.format("Content mismatch (expected: %s, received: %s)", xml, actualContent),
-                    xml,
-                    actualContent
-            );
+            assertEquals("Retrieved content encoding should match value from PutObject", "dd-plain-no-encoding", object.response().contentEncoding());
+            assertEquals("Retrieved content should match uploaded content", xml, new String(bytes, StandardCharsets.UTF_8));
         }
     }
 
@@ -200,12 +141,7 @@ public class PutObjectTests extends S3TestBase {
         );
 
         try (var object = bucket.getObject("content-type/")) {
-            var actualContentType = object.response().contentType();
-            assertEquals(
-                    String.format("Content type mismatch (expected: %s, received: %s)", "text/empty", actualContentType),
-                    "text/empty",
-                    actualContentType
-            );
+            assertEquals("Retrieved content type should match value from PutObject", "text/empty", object.response().contentType());
         }
     }
 
