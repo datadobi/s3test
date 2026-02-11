@@ -41,16 +41,36 @@ public class PutObjectTests extends S3TestBase {
     public void testPutObject() {
         var putResponse = bucket.putObject("foo", "bar");
         var headResponse = bucket.headObject("foo");
-        assertEquals(Long.valueOf(3), headResponse.contentLength());
-        assertEquals(putResponse.eTag(), headResponse.eTag());
+        var actualContentLength = headResponse.contentLength();
+        assertEquals(
+                String.format("Content length mismatch (expected: %s, received: %s)", Long.valueOf(3), actualContentLength),
+                Long.valueOf(3),
+                actualContentLength
+        );
+        var actualETag = headResponse.eTag();
+        assertEquals(
+                String.format("ETag mismatch (expected: %s, received: %s)", putResponse.eTag(), actualETag),
+                putResponse.eTag(),
+                actualETag
+        );
     }
 
     @Test
     public void testPutEmptyObject() {
         var putResponse = bucket.putObject("foo", "");
         var headResponse = bucket.headObject("foo");
-        assertEquals(Long.valueOf(0), headResponse.contentLength());
-        assertEquals(putResponse.eTag(), headResponse.eTag());
+        var actualContentLength = headResponse.contentLength();
+        assertEquals(
+                String.format("Content length mismatch for empty object (expected: %s, received: %s)", Long.valueOf(0), actualContentLength),
+                Long.valueOf(0),
+                actualContentLength
+        );
+        var actualETag = headResponse.eTag();
+        assertEquals(
+                String.format("ETag mismatch (expected: %s, received: %s)", putResponse.eTag(), actualETag),
+                putResponse.eTag(),
+                actualETag
+        );
     }
 
     @Test
@@ -62,25 +82,47 @@ public class PutObjectTests extends S3TestBase {
         var eTag1 = putObjectResult1.eTag();
 
         try (var object = bucket.getObject(key)) {
-            assertEquals(eTag1, object.response().eTag());
+            var actualETag = object.response().eTag();
+            assertEquals(
+                    String.format("ETag mismatch after first put (expected: %s, received: %s)", eTag1, actualETag),
+                    eTag1,
+                    actualETag
+            );
 
             var content = new String(object.readAllBytes(), StandardCharsets.UTF_8);
-            assertEquals(content1, content);
+            assertEquals(
+                    String.format("Content mismatch after first put (expected: %s, received: %s)", content1, content),
+                    content1,
+                    content
+            );
         }
 
         var content2 = "bb";
         var putObjectResult2 = bucket.putObject(key, content2);
 
-        assertNotNull(putObjectResult2);
+        assertNotNull("PutObject result should not be null", putObjectResult2);
         var eTag2 = putObjectResult2.eTag();
 
-        assertNotEquals(eTag1, eTag2);
+        assertNotEquals(
+                String.format("ETags should differ after updating object (first: %s, second: %s)", eTag1, eTag2),
+                eTag1,
+                eTag2
+        );
 
         try (var object = bucket.getObject(key)) {
-            assertEquals(object.response().eTag(), eTag2);
+            var actualETag = object.response().eTag();
+            assertEquals(
+                    String.format("ETag mismatch after second put (expected: %s, received: %s)", eTag2, actualETag),
+                    eTag2,
+                    actualETag
+            );
 
             var content = new String(object.readAllBytes(), StandardCharsets.UTF_8);
-            assertEquals(content2, content);
+            assertEquals(
+                    String.format("Content mismatch after second put (expected: %s, received: %s)", content2, content),
+                    content2,
+                    content
+            );
         }
 
     }
@@ -104,8 +146,13 @@ public class PutObjectTests extends S3TestBase {
 
         try (var object = bucket.getObject("content-encoding-gzip")) {
             var bytes = object.readAllBytes();
-            assertEquals("gzip", object.response().contentEncoding());
-            assertArrayEquals(data, bytes);
+            var actualEncoding = object.response().contentEncoding();
+            assertEquals(
+                    String.format("Content encoding mismatch (expected: %s, received: %s)", "gzip", actualEncoding),
+                    "gzip",
+                    actualEncoding
+            );
+            assertArrayEquals("Gzipped data should match", data, bytes);
         }
     }
 
@@ -124,8 +171,18 @@ public class PutObjectTests extends S3TestBase {
 
         try (var object = bucket.getObject("content-encoding-unknown")) {
             var bytes = object.readAllBytes();
-            assertEquals("dd-plain-no-encoding", object.response().contentEncoding());
-            assertEquals(xml, new String(bytes, StandardCharsets.UTF_8));
+            var actualEncoding = object.response().contentEncoding();
+            assertEquals(
+                    String.format("Content encoding mismatch (expected: %s, received: %s)", "dd-plain-no-encoding", actualEncoding),
+                    "dd-plain-no-encoding",
+                    actualEncoding
+            );
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Content mismatch (expected: %s, received: %s)", xml, actualContent),
+                    xml,
+                    actualContent
+            );
         }
     }
 
@@ -143,7 +200,12 @@ public class PutObjectTests extends S3TestBase {
         );
 
         try (var object = bucket.getObject("content-type/")) {
-            assertEquals("text/empty", object.response().contentType());
+            var actualContentType = object.response().contentType();
+            assertEquals(
+                    String.format("Content type mismatch (expected: %s, received: %s)", "text/empty", actualContentType),
+                    "text/empty",
+                    actualContentType
+            );
         }
     }
 

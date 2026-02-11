@@ -39,13 +39,20 @@ public class ListBucketsTests extends S3TestBase {
         var listBucketsResponse = S3.listBuckets(s3);
         var headers = listBucketsResponse.sdkHttpResponse().headers();
 
-        Assertions.assertThat(headers).containsKey("Date");
+        Assertions.assertThat(headers)
+                .as("Response headers should contain Date header")
+                .containsKey("Date");
 
         var date = headers.get("Date").get(0);
         var serverTime = Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.parse(date));
 
         // coarse time validation, we don't want to test that the clocks of our test runners are perfectly in sync with the clocks of the server
         // rather, we want to know if the timezone information is correct etc
-        Assertions.assertThat(serverTime).isBetween(timeOfRequest.minus(30, ChronoUnit.SECONDS), timeOfRequest.plus(30, ChronoUnit.SECONDS));
+        Assertions.assertThat(serverTime)
+                .as("Server time should be within 30 seconds of request time (expected range: %s to %s, received: %s)",
+                        timeOfRequest.minus(30, ChronoUnit.SECONDS),
+                        timeOfRequest.plus(30, ChronoUnit.SECONDS),
+                        serverTime)
+                .isBetween(timeOfRequest.minus(30, ChronoUnit.SECONDS), timeOfRequest.plus(30, ChronoUnit.SECONDS));
     }
 }

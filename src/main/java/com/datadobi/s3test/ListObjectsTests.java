@@ -54,7 +54,12 @@ public class ListObjectsTests extends S3TestBase {
         }
 
         var keys = bucket.listObjectKeys(V2, 7);
-        assertEquals(generatedKeys, new HashSet<>(keys));
+        var actualKeys = new HashSet<>(keys);
+        assertEquals(
+                String.format("ListObjectsV1 should return all generated keys (expected: %s, received: %s)", generatedKeys, actualKeys),
+                generatedKeys,
+                actualKeys
+        );
     }
 
     @Test
@@ -67,7 +72,12 @@ public class ListObjectsTests extends S3TestBase {
         }
 
         var keys = bucket.listObjectKeys(V2, 7);
-        assertEquals(generatedKeys, new HashSet<>(keys));
+        var actualKeys = new HashSet<>(keys);
+        assertEquals(
+                String.format("ListObjectsV2 should return all generated keys (expected: %s, received: %s)", generatedKeys, actualKeys),
+                generatedKeys,
+                actualKeys
+        );
     }
 
     @Test
@@ -169,29 +179,67 @@ public class ListObjectsTests extends S3TestBase {
                         .build()
         );
         // ETag shouldn't change since the object content did not change
-        assertEquals(putResponse.eTag(), copyResponse.copyObjectResult().eTag());
+        assertEquals(
+                String.format("ETag should not change after COPY (expected: %s, received: %s)", putResponse.eTag(), copyResponse.copyObjectResult().eTag()),
+                putResponse.eTag(),
+                copyResponse.copyObjectResult().eTag()
+        );
 
         var headObjectResponse = bucket.headObject("key");
         // HEAD of the object should return the same ETag
-        assertEquals(copyResponse.copyObjectResult().eTag(), headObjectResponse.eTag());
+        assertEquals(
+                String.format("HEAD should return same ETag as COPY (expected: %s, received: %s)", copyResponse.copyObjectResult().eTag(), headObjectResponse.eTag()),
+                copyResponse.copyObjectResult().eTag(),
+                headObjectResponse.eTag()
+        );
 
         var listV1Response = bucket.listObjectsV1(null, null);
         var listV2Response = bucket.listObjectsV2(null, null);
 
         // Listing should return the same etag
         if (target.hasQuirk(ETAG_EMPTY_AFTER_COPY_OBJECT)) {
-            assertEquals("\"\"", listV1Response.contents().getFirst().eTag());
-            assertEquals("\"\"", listV2Response.contents().getFirst().eTag());
+            var listV1ETag = listV1Response.contents().getFirst().eTag();
+            assertEquals(
+                    String.format("ListV1 should return empty ETag after COPY (expected: %s, received: %s)", "\"\"", listV1ETag),
+                    "\"\"",
+                    listV1ETag
+            );
+            var listV2ETag = listV2Response.contents().getFirst().eTag();
+            assertEquals(
+                    String.format("ListV2 should return empty ETag after COPY (expected: %s, received: %s)", "\"\"", listV2ETag),
+                    "\"\"",
+                    listV2ETag
+            );
         } else {
-            assertEquals(copyResponse.copyObjectResult().eTag(), listV1Response.contents().getFirst().eTag());
-            assertEquals(copyResponse.copyObjectResult().eTag(), listV2Response.contents().getFirst().eTag());
+            var listV1ETag = listV1Response.contents().getFirst().eTag();
+            assertEquals(
+                    String.format("ListV1 should return same ETag as COPY (expected: %s, received: %s)", copyResponse.copyObjectResult().eTag(), listV1ETag),
+                    copyResponse.copyObjectResult().eTag(),
+                    listV1ETag
+            );
+            var listV2ETag = listV2Response.contents().getFirst().eTag();
+            assertEquals(
+                    String.format("ListV2 should return same ETag as COPY (expected: %s, received: %s)", copyResponse.copyObjectResult().eTag(), listV2ETag),
+                    copyResponse.copyObjectResult().eTag(),
+                    listV2ETag
+            );
         }
     }
 
     @Test
     public void testListEmpty() {
-        assertEquals(List.of(), bucket.listObjectKeys(V1));
-        assertEquals(List.of(), bucket.listObjectKeys(V2));
+        var listV1Keys = bucket.listObjectKeys(V1);
+        assertEquals(
+                String.format("ListObjectsV1 should return empty list for empty bucket (expected: %s, received: %s)", List.of(), listV1Keys),
+                List.of(),
+                listV1Keys
+        );
+        var listV2Keys = bucket.listObjectKeys(V2);
+        assertEquals(
+                String.format("ListObjectsV2 should return empty list for empty bucket (expected: %s, received: %s)", List.of(), listV2Keys),
+                List.of(),
+                listV2Keys
+        );
     }
 
     @Test
@@ -201,8 +249,18 @@ public class ListObjectsTests extends S3TestBase {
             bucket.putObject(key, key);
         }
 
-        assertEquals(keys, bucket.listObjectKeys(V1));
-        assertEquals(keys, bucket.listObjectKeys(V2));
+        var listV1Keys = bucket.listObjectKeys(V1);
+        assertEquals(
+                String.format("ListObjectsV1 should return all keys (expected: %s, received: %s)", keys, listV1Keys),
+                keys,
+                listV1Keys
+        );
+        var listV2Keys = bucket.listObjectKeys(V2);
+        assertEquals(
+                String.format("ListObjectsV2 should return all keys (expected: %s, received: %s)", keys, listV2Keys),
+                keys,
+                listV2Keys
+        );
     }
 
     private void validateListObjects(S3.ListObjectsVersion listObjectsVersion, Map<String, String> content) {
@@ -218,7 +276,11 @@ public class ListObjectsTests extends S3TestBase {
 
         var actualKeys = bucket.listObjectKeys(listObjectsVersion, 10);
 
-        assertEquals(expectedKeys, actualKeys);
+        assertEquals(
+                String.format("Keys should be sorted in UTF-8 binary order (expected: %s, received: %s)", expectedKeys, actualKeys),
+                expectedKeys,
+                actualKeys
+        );
     }
 
     @Test
@@ -298,8 +360,14 @@ public class ListObjectsTests extends S3TestBase {
                 r -> r.maxKeys(10).marker("A/C").encodingType(EncodingType.URL)
         );
 
-        assertFalse(result.isTruncated());
-        assertTrue(result.contents().isEmpty());
+        assertFalse(
+                String.format("Result should not be truncated when listing after key space (received: %s)", result.isTruncated()),
+                result.isTruncated()
+        );
+        assertTrue(
+                String.format("Contents should be empty when listing after key space (received: %s)", result.contents()),
+                result.contents().isEmpty()
+        );
     }
 
     @Test
@@ -310,8 +378,16 @@ public class ListObjectsTests extends S3TestBase {
                 r -> r.maxKeys(10).marker("A/C").prefix("Z").encodingType(EncodingType.URL)
         );
 
-        assertFalse(result.isTruncated());
-        assertEquals(1, result.contents().size());
+        assertFalse(
+                String.format("Result should not be truncated when marker is before prefix (received: %s)", result.isTruncated()),
+                result.isTruncated()
+        );
+        var actualSize = result.contents().size();
+        assertEquals(
+                String.format("Should return 1 object when marker is before prefix (expected: %s, received: %s)", 1, actualSize),
+                1,
+                actualSize
+        );
     }
 
     @Test
@@ -322,7 +398,15 @@ public class ListObjectsTests extends S3TestBase {
                 r -> r.maxKeys(10).marker("Z/").prefix("A/").encodingType(EncodingType.URL)
         );
 
-        assertFalse(result.isTruncated());
-        assertEquals(0, result.contents().size());
+        assertFalse(
+                String.format("Result should not be truncated when marker is after prefix (received: %s)", result.isTruncated()),
+                result.isTruncated()
+        );
+        var actualSize = result.contents().size();
+        assertEquals(
+                String.format("Should return 0 objects when marker is after prefix (expected: %s, received: %s)", 0, actualSize),
+                0,
+                actualSize
+        );
     }
 }

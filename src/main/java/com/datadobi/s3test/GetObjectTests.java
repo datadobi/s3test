@@ -43,7 +43,12 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("foo")) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals(fullContent, new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Content mismatch (expected: %s, received: %s)", fullContent, actualContent),
+                    fullContent,
+                    actualContent
+            );
         }
     }
 
@@ -54,8 +59,16 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("empty")) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals(0, bytes.length);
-            assertEquals(Long.valueOf(0L), objectInputStream.response().contentLength());
+            assertEquals(
+                    String.format("Byte array length mismatch (expected: %s, received: %s)", 0, bytes.length),
+                    0,
+                    bytes.length
+            );
+            assertEquals(
+                    String.format("Content length mismatch (expected: %s, received: %s)", 0L, objectInputStream.response().contentLength()),
+                    Long.valueOf(0L),
+                    objectInputStream.response().contentLength()
+            );
         }
     }
 
@@ -64,7 +77,11 @@ public class GetObjectTests extends S3TestBase {
         try (var objectInputStream = bucket.getObject("foo")) {
             fail("Should return HTTP 404");
         } catch (S3Exception e) {
-            assertEquals(404, e.statusCode());
+            assertEquals(
+                    String.format("Status code mismatch (expected: %s, received: %s)", 404, e.statusCode()),
+                    404,
+                    e.statusCode()
+            );
         }
     }
 
@@ -81,11 +98,24 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("foo", null, range)) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals("World!", new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Partial content mismatch (expected: %s, received: %s)", "World!", actualContent),
+                    "World!",
+                    actualContent
+            );
 
             var response = objectInputStream.response();
-            assertEquals(contentRange.toString(), response.contentRange());
-            assertEquals(Long.valueOf(lastPos - startPos + 1), response.contentLength());
+            assertEquals(
+                    String.format("Content range mismatch (expected: %s, received: %s)", contentRange.toString(), response.contentRange()),
+                    contentRange.toString(),
+                    response.contentRange()
+            );
+            assertEquals(
+                    String.format("Content length mismatch (expected: %s, received: %s)", lastPos - startPos + 1, response.contentLength()),
+                    Long.valueOf(lastPos - startPos + 1),
+                    response.contentLength()
+            );
         }
     }
 
@@ -98,7 +128,11 @@ public class GetObjectTests extends S3TestBase {
             bucket.getObject("foo", null, new Range("bytes", ImmutableList.of(new RangeSpec(200L, null))));
             fail("Should return HTTP 416");
         } catch (S3Exception e) {
-            assertEquals(416, e.statusCode());
+            assertEquals(
+                    String.format("Status code mismatch (expected: %s, received: %s)", 416, e.statusCode()),
+                    416,
+                    e.statusCode()
+            );
         }
     }
 
@@ -115,11 +149,24 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("foo", null, range)) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals("Hello", new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Partial content mismatch (expected: %s, received: %s)", "Hello", actualContent),
+                    "Hello",
+                    actualContent
+            );
 
             var response = objectInputStream.response();
-            assertEquals(contentRange.toString(), response.contentRange());
-            assertEquals(Long.valueOf(endPos - startPos + 1), response.contentLength());
+            assertEquals(
+                    String.format("Content range mismatch (expected: %s, received: %s)", contentRange.toString(), response.contentRange()),
+                    contentRange.toString(),
+                    response.contentRange()
+            );
+            assertEquals(
+                    String.format("Content length mismatch (expected: %s, received: %s)", endPos - startPos + 1, response.contentLength()),
+                    Long.valueOf(endPos - startPos + 1),
+                    response.contentLength()
+            );
         }
     }
 
@@ -136,11 +183,24 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("foo", null, range)) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals("World", new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Partial content mismatch (expected: %s, received: %s)", "World", actualContent),
+                    "World",
+                    actualContent
+            );
 
             var response = objectInputStream.response();
-            assertEquals(contentRange.toString(), response.contentRange());
-            assertEquals(Long.valueOf(endPos - startPos + 1), response.contentLength());
+            assertEquals(
+                    String.format("Content range mismatch (expected: %s, received: %s)", contentRange.toString(), response.contentRange()),
+                    contentRange.toString(),
+                    response.contentRange()
+            );
+            assertEquals(
+                    String.format("Content length mismatch (expected: %s, received: %s)", endPos - startPos + 1, response.contentLength()),
+                    Long.valueOf(endPos - startPos + 1),
+                    response.contentLength()
+            );
         }
     }
 
@@ -154,7 +214,12 @@ public class GetObjectTests extends S3TestBase {
 
         try (var objectInputStream = bucket.getObject("foo", null, range)) {
             var bytes = objectInputStream.readAllBytes();
-            assertEquals("World!", new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Partial content mismatch (expected: %s, received: %s)", "World!", actualContent),
+                    "World!",
+                    actualContent
+            );
         }
     }
 
@@ -171,7 +236,12 @@ public class GetObjectTests extends S3TestBase {
         try (var objectInputStream = bucket.getObject("foo", null, range)) {
             var bytes = objectInputStream.readAllBytes();
             // Should return from startPos to end of file
-            assertEquals("ld!", new String(bytes, StandardCharsets.UTF_8));
+            var actualContent = new String(bytes, StandardCharsets.UTF_8);
+            assertEquals(
+                    String.format("Partial content mismatch (expected: %s, received: %s)", "ld!", actualContent),
+                    "ld!",
+                    actualContent
+            );
         }
     }
 }

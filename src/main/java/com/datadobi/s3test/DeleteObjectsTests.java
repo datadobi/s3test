@@ -36,10 +36,12 @@ public class DeleteObjectsTests extends S3TestBase {
         bucket.putObject("a", "Hello");
         bucket.putObject("b", "World");
         var deleteResponse = bucket.deleteObjects("a", "b");
-        assertTrue(deleteResponse.hasDeleted());
+        var actualKeys = deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList();
+        assertTrue("Delete response should have deleted objects", deleteResponse.hasDeleted());
         assertEquals(
+                String.format("Deleted keys mismatch (expected: %s, received: %s)", List.of("a", "b"), actualKeys),
                 List.of("a", "b"),
-                deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList()
+                actualKeys
         );
     }
 
@@ -48,10 +50,12 @@ public class DeleteObjectsTests extends S3TestBase {
         bucket.putObject("a", "Hello");
         var headResponse = bucket.headObject("a");
         var deleteResponse = bucket.deleteObjects(oid -> oid.key("a").eTag(headResponse.eTag()));
-        assertTrue(deleteResponse.hasDeleted());
+        var actualKeys = deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList();
+        assertTrue("Delete response should have deleted objects with matching ETag", deleteResponse.hasDeleted());
         assertEquals(
+                String.format("Deleted keys mismatch (expected: %s, received: %s)", List.of("a"), actualKeys),
                 List.of("a"),
-                deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList()
+                actualKeys
         );
     }
 
@@ -62,10 +66,12 @@ public class DeleteObjectsTests extends S3TestBase {
             var etag = "\"foo\"";
             oid.key("a").eTag(etag);
         });
-        assertFalse(deleteResponse.hasDeleted());
+        var actualKeys = deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList();
+        assertFalse("Delete response should not have deleted objects with mismatched ETag", deleteResponse.hasDeleted());
         assertEquals(
+                String.format("Deleted keys mismatch (expected: %s, received: %s)", List.of(), actualKeys),
                 List.of(),
-                deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList()
+                actualKeys
         );
     }
 
@@ -74,10 +80,12 @@ public class DeleteObjectsTests extends S3TestBase {
         bucket.putObject("a..b", "Hello");
         bucket.putObject("c..d", "World");
         var deleteResponse = bucket.deleteObjects("a..b", "c..d");
-        assertTrue(deleteResponse.hasDeleted());
+        var actualKeys = deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList();
+        assertTrue("Delete response should have deleted objects with '..' in keys", deleteResponse.hasDeleted());
         assertEquals(
+                String.format("Deleted keys mismatch (expected: %s, received: %s)", List.of("a..b", "c..d"), actualKeys),
                 List.of("a..b", "c..d"),
-                deleteResponse.deleted().stream().map(DeletedObject::key).sorted().toList()
+                actualKeys
         );
     }
 }

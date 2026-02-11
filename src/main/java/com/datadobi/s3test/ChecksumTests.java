@@ -86,8 +86,8 @@ public class ChecksumTests extends S3TestBase {
         };
 
         var headResponse = bucket.headObject(r -> r.key(key).checksumMode(ChecksumMode.ENABLED));
-        assertEquals("Content length mismatch", Long.valueOf(key.length()), headResponse.contentLength());
-        assertEquals("ETag mismatch", putResponse.eTag(), headResponse.eTag());
+        assertEquals(String.format("Content length mismatch (expected: %s, received: %s)", key.length(), headResponse.contentLength()), Long.valueOf(key.length()), headResponse.contentLength());
+        assertEquals(String.format("ETag mismatch (expected: %s, received: %s)", putResponse.eTag(), headResponse.eTag()), putResponse.eTag(), headResponse.eTag());
         var headChecksum = switch (checksumAlgorithm) {
             case CRC32 -> headResponse.checksumCRC32();
             case CRC32_C -> headResponse.checksumCRC32C();
@@ -96,7 +96,7 @@ public class ChecksumTests extends S3TestBase {
             case CRC64_NVME -> headResponse.checksumCRC64NVME();
             case UNKNOWN_TO_SDK_VERSION -> throw new IllegalArgumentException(checksumAlgorithm.toString());
         };
-        assertEquals("Checksum mismatch", putChecksum, headChecksum);
+        assertEquals(String.format("Checksum mismatch (expected: %s, received: %s)", putChecksum, headChecksum), putChecksum, headChecksum);
     }
 
     @Test

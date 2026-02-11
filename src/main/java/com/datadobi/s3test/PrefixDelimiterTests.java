@@ -61,7 +61,7 @@ public class PrefixDelimiterTests extends S3TestBase {
                 List.of("a/d"),
                 List.of("a/b/", "a/c/")
         );
-        assertFalse(response.isTruncated());
+        assertFalse("Response should not be truncated", response.isTruncated());
     }
 
     @Test
@@ -87,7 +87,7 @@ public class PrefixDelimiterTests extends S3TestBase {
                 List.of("a/b/0", "a/b/1", "a/b/2", "a/b/3", "a/b/4", "a/b/5", "a/b/6", "a/b/7", "a/b/8", "a/b/9"),
                 List.of()
         );
-        assertFalse(result.isTruncated());
+        assertFalse("Result should not be truncated", result.isTruncated());
     }
 
     @Test
@@ -279,16 +279,20 @@ public class PrefixDelimiterTests extends S3TestBase {
     private ListObjectsV2Response list(Consumer<ListObjectsV2Request.Builder> request, List<String> expectedKeys, List<String> expectedPrefixes) {
         var result = bucket.listObjectsV2(request);
 
-        assertNotNull(result);
+        assertNotNull("List result should not be null", result);
 
+        var actualKeys = result.contents().stream().map(S3Object::key).collect(Collectors.toList());
         assertEquals(
+                String.format("Object keys mismatch (expected: %s, received: %s)", expectedKeys, actualKeys),
                 expectedKeys,
-                result.contents().stream().map(S3Object::key).collect(Collectors.toList())
+                actualKeys
         );
 
+        var actualPrefixes = result.commonPrefixes().stream().map(CommonPrefix::prefix).collect(Collectors.toList());
         assertEquals(
+                String.format("Common prefixes mismatch (expected: %s, received: %s)", expectedPrefixes, actualPrefixes),
                 expectedPrefixes,
-                result.commonPrefixes().stream().map(CommonPrefix::prefix).collect(Collectors.toList())
+                actualPrefixes
         );
 
         return result;

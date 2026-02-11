@@ -84,7 +84,7 @@ public class MultiPartUploadTests extends S3TestBase {
 
         var objectMetadata = bucket.headObject(r -> r.key(key).partNumber(1));
 
-        assertNotNull(objectMetadata);
+        assertNotNull("Object metadata should not be null after HEAD request", objectMetadata);
 
         Integer receivePartitionCount = null;
 
@@ -92,12 +92,13 @@ public class MultiPartUploadTests extends S3TestBase {
             receivePartitionCount = objectMetadata.partsCount();
             if (receivePartitionCount != null) {
                 assertTrue(
+                        String.format("Part count should match unless MULTIPART_SIZES_NOT_KEPT quirk (expected: %s, received: %s)", partitionCount, receivePartitionCount),
                         target.hasQuirk(MULTIPART_SIZES_NOT_KEPT) ||
                                 receivePartitionCount == partitionCount
                 );
-                assertFalse(target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
+                assertFalse("GET_OBJECT_PARTCOUNT_NOT_SUPPORTED quirk should not be present when part count is returned", target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
             } else {
-                assertTrue(target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
+                assertTrue("GET_OBJECT_PARTCOUNT_NOT_SUPPORTED quirk should be present when part count is null", target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
             }
         }
 
@@ -113,9 +114,17 @@ public class MultiPartUploadTests extends S3TestBase {
                     receivedTotalSize += receivedSize;
 
                     if (target.hasQuirk(MULTIPART_SIZES_NOT_KEPT)) {
-                        assertNotEquals(receivedSize, partitionSize);
+                        assertNotEquals(
+                                String.format("Part size should not match when MULTIPART_SIZES_NOT_KEPT quirk is present (expected: %s, received: %s)", partitionSize, receivedSize),
+                                receivedSize,
+                                partitionSize
+                        );
                     } else {
-                        assertEquals(receivedSize, partitionSize);
+                        assertEquals(
+                                String.format("Part size mismatch (expected: %s, received: %s)", partitionSize, receivedSize),
+                                receivedSize,
+                                partitionSize
+                        );
                     }
                 }
             }
@@ -128,6 +137,10 @@ public class MultiPartUploadTests extends S3TestBase {
             }
         }
 
-        assertEquals(receivedTotalSize, uploadedTotalSize);
+        assertEquals(
+                String.format("Total size mismatch (expected: %s, received: %s)", uploadedTotalSize, receivedTotalSize),
+                receivedTotalSize,
+                uploadedTotalSize
+        );
     }
 }
