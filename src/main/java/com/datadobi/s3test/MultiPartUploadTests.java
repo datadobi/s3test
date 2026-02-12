@@ -39,38 +39,69 @@ public class MultiPartUploadTests extends S3TestBase {
 
     @Test
     public void abortMultipartUploadWithNoParts() {
-        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+        String key = "foo";
 
-        bucket.abortMultipartUpload("foo", mpu.uploadId());
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
 
-        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+        verifyMultipartUploadPresentInListing(key, uploadId);
+
+        bucket.abortMultipartUpload(key, uploadId);
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
     }
 
     @Test
     public void abortMultipartUploadTwice() {
-        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+        String key = "foo";
 
-        bucket.abortMultipartUpload("foo", mpu.uploadId());
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
 
-        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+        verifyMultipartUploadPresentInListing(key, uploadId);
 
-        bucket.abortMultipartUpload("foo", mpu.uploadId());
+        bucket.abortMultipartUpload(key, uploadId);
 
-        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
+
+        bucket.abortMultipartUpload(key, uploadId);
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
     }
 
     @Test
     public void abortMultipartUploadWithPart() {
-        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+        String key = "foo";
 
-        bucket.uploadPart("foo", mpu.uploadId(), 1, "hello");
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
 
-        bucket.abortMultipartUpload("foo", mpu.uploadId());
+        verifyMultipartUploadPresentInListing(key, uploadId);
 
-        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+        bucket.uploadPart(key, uploadId, 1, "hello");
+
+        bucket.abortMultipartUpload(key, uploadId);
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
     }
 
-    private void verifyMultipartUploadDoesNotExist(String key, String uploadId) {
+    private void verifyMultipartUploadPresentInListing(String key, String uploadId) {
+        ListMultipartUploadsResponse uploads = bucket.listMultipartUploads();
+        MultipartUpload upload;
+        if (uploads.hasUploads()) {
+            upload = uploads.uploads()
+                    .stream()
+                    .filter(u -> u.key().equals(key) && u.uploadId().equals(uploadId))
+                    .findFirst()
+                    .orElse(null);
+        } else {
+            upload = null;
+        }
+
+        assertNotNull("Multipart upload should exist", upload);
+    }
+
+    private void verifyMultipartUploadNotPresentInListing(String key, String uploadId) {
         ListMultipartUploadsResponse uploads = bucket.listMultipartUploads();
         if (uploads.hasUploads()) {
             MultipartUpload upload = uploads.uploads()
@@ -113,6 +144,65 @@ public class MultiPartUploadTests extends S3TestBase {
         } catch (S3Exception e) {
             assertEquals("Expected HTTP 404 Not Found", 404, e.statusCode());
         }
+    }
+
+    @Test
+    public void completeMultipartUploadWithNoParts() {
+        String key = "foo";
+
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
+
+        try {
+            CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder().build();
+            bucket.completeMultipartUpload(r -> r.key(key).uploadId(uploadId).multipartUpload(completedUpload));
+        } catch (S3Exception e) {
+            assertEquals("Expected HTTP 400 Bad Request for CompleteMultipartUpload with no parts", 400, e.statusCode());
+        }
+    }
+
+    @Test
+    public void completeMultipartUploadWithPart() {
+        String key = "foo";
+
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
+
+        verifyMultipartUploadPresentInListing(key, uploadId);
+
+        UploadPartResponse uploadPart = bucket.uploadPart(key, uploadId, 1, "hello");
+        CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder().parts(CompletedPart.builder()
+                .partNumber(1)
+                .eTag(uploadPart.eTag())
+                .build()).build();
+
+        bucket.completeMultipartUpload(r -> r.key(key).uploadId(uploadId).multipartUpload(completedUpload));
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
+    }
+
+    @Test
+    public void completeMultipartUploadTwice() {
+        String key = "foo";
+
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
+        String uploadId = mpu.uploadId();
+
+        verifyMultipartUploadPresentInListing(key, uploadId);
+
+        UploadPartResponse uploadPart = bucket.uploadPart(key, uploadId, 1, "hello");
+        CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder().parts(CompletedPart.builder()
+                .partNumber(1)
+                .eTag(uploadPart.eTag())
+                .build()).build();
+
+        bucket.completeMultipartUpload(r -> r.key(key).uploadId(uploadId).multipartUpload(completedUpload));
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
+
+        bucket.completeMultipartUpload(r -> r.key(key).uploadId(uploadId).multipartUpload(completedUpload));
+
+        verifyMultipartUploadNotPresentInListing(key, uploadId);
     }
 
     @Test
