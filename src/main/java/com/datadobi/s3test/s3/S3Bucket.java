@@ -219,6 +219,17 @@ public class S3Bucket {
         return client.createMultipartUpload(r -> r.bucket(bucket).key(key));
     }
 
+    public UploadPartResponse uploadPart(String key, String uploadId, int partNumber, String content) {
+        return uploadPart(key, uploadId, partNumber, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public UploadPartResponse uploadPart(String key, String uploadId, int partNumber, byte[] content) {
+        return uploadPart(r -> r.key(key)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .contentLength((long) content.length), content);
+    }
+
     public UploadPartResponse uploadPart(Consumer<UploadPartRequest.Builder> uploadRequest, byte[] content) {
         return client.uploadPart(r -> {
                     uploadRequest.accept(r);
@@ -233,5 +244,20 @@ public class S3Bucket {
             complete.accept(r);
             r.bucket(bucket);
         });
+    }
+
+    public AbortMultipartUploadResponse abortMultipartUpload(String key, String uploadId) {
+        return abortMultipartUpload(r -> r.key(key).uploadId(uploadId));
+    }
+
+    public AbortMultipartUploadResponse abortMultipartUpload(Consumer<AbortMultipartUploadRequest.Builder> a) {
+        return client.abortMultipartUpload(r -> {
+            a.accept(r);
+            r.bucket(bucket);
+        });
+    }
+
+    public ListMultipartUploadsResponse listMultipartUploads() {
+        return client.listMultipartUploads(r -> r.bucket(bucket));
     }
 }

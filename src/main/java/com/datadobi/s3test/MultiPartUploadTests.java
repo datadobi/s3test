@@ -20,13 +20,13 @@ package com.datadobi.s3test;
 
 import com.datadobi.s3test.s3.S3TestBase;
 import org.junit.Test;
-import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
-import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static com.datadobi.s3test.s3.Quirk.*;
 import static org.junit.Assert.*;
@@ -35,6 +35,84 @@ public class MultiPartUploadTests extends S3TestBase {
     private static final int MB = 1024 * 1024;
 
     public MultiPartUploadTests() throws IOException {
+    }
+
+    @Test
+    public void abortMultipartUploadWithNoParts() {
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+
+        bucket.abortMultipartUpload("foo", mpu.uploadId());
+
+        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+    }
+
+    @Test
+    public void abortMultipartUploadTwice() {
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+
+        bucket.abortMultipartUpload("foo", mpu.uploadId());
+
+        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+
+        bucket.abortMultipartUpload("foo", mpu.uploadId());
+
+        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+    }
+
+    @Test
+    public void abortMultipartUploadWithPart() {
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+
+        bucket.uploadPart("foo", mpu.uploadId(), 1, "hello");
+
+        bucket.abortMultipartUpload("foo", mpu.uploadId());
+
+        verifyMultipartUploadDoesNotExist("foo", mpu.uploadId());
+    }
+
+    private void verifyMultipartUploadDoesNotExist(String key, String uploadId) {
+        ListMultipartUploadsResponse uploads = bucket.listMultipartUploads();
+        if (uploads.hasUploads()) {
+            MultipartUpload upload = uploads.uploads()
+                    .stream()
+                    .filter(u -> u.key().equals(key) && u.uploadId().equals(uploadId))
+                    .findFirst()
+                    .orElse(null);
+
+            assertNull("Multipart upload should not exist", upload);
+        }
+    }
+
+    @Test
+    public void abortMultipartUploadWithIncorrectKey() {
+        CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
+        try {
+            bucket.abortMultipartUpload("bar", mpu.uploadId());
+        } catch (S3Exception e) {
+            assertEquals("Expected HTTP 404 Not Found", 404, e.statusCode());
+        }
+    }
+
+    @Test
+    public void abortMultipartUploadWithIncorrectUploadId() {
+        bucket.createMultipartUpload("foo");
+
+        try {
+            bucket.abortMultipartUpload("foo", UUID.randomUUID().toString());
+        } catch (S3Exception e) {
+            assertEquals("Expected HTTP 404 Not Found", 404, e.statusCode());
+        }
+    }
+
+    @Test
+    public void abortMultipartUploadWithIncorrectKeyAndUploadId() {
+        bucket.createMultipartUpload("foo");
+
+        try {
+            bucket.abortMultipartUpload("bar", UUID.randomUUID().toString());
+        } catch (S3Exception e) {
+            assertEquals("Expected HTTP 404 Not Found", 404, e.statusCode());
+        }
     }
 
     @Test
@@ -60,11 +138,7 @@ public class MultiPartUploadTests extends S3TestBase {
             var content = new byte[(int) partitionSize];
 
             // Upload the part and add the response's ETag to our list.
-            var finalPartNumber = partNumber;
-            var uploadResult = bucket.uploadPart(r -> r.key(key)
-                    .uploadId(initResponse.uploadId())
-                    .partNumber(finalPartNumber)
-                    .contentLength((long) content.length), content);
+            var uploadResult = bucket.uploadPart(key, initResponse.uploadId(), partNumber, content);
             partETags.add(CompletedPart.builder()
                     .partNumber(partNumber)
                     .eTag(uploadResult.eTag())
