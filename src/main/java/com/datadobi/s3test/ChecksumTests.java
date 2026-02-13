@@ -37,30 +37,50 @@ public class ChecksumTests extends S3TestBase {
     public ChecksumTests() throws IOException {
     }
 
+    /**
+     * Puts an object with CRC32 checksum and verifies the server stores and returns it.
+     * Expected: Put succeeds; HEAD with ChecksumMode.ENABLED returns same content-length, ETag, and CRC32 checksum.
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     public void testCRC32() {
         putWithChecksum(ChecksumAlgorithm.CRC32);
     }
 
+    /**
+     * Puts an object with CRC32C checksum and verifies the server stores and returns it.
+     * Expected: Put succeeds; HEAD with ChecksumMode.ENABLED returns same content-length, ETag, and CRC32C checksum.
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     public void testCRC32_C() {
         putWithChecksum(ChecksumAlgorithm.CRC32_C);
     }
 
+    /**
+     * Puts an object with SHA1 checksum and verifies the server stores and returns it.
+     * Expected: Put succeeds; HEAD with ChecksumMode.ENABLED returns same content-length, ETag, and SHA1 checksum.
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     public void testSHA1() {
         putWithChecksum(ChecksumAlgorithm.SHA1);
     }
 
+    /**
+     * Puts an object with SHA256 checksum and verifies the server stores and returns it.
+     * Expected: Put succeeds; HEAD with ChecksumMode.ENABLED returns same content-length, ETag, and SHA256 checksum.
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     public void testSHA256() {
         putWithChecksum(ChecksumAlgorithm.SHA256);
     }
 
+    /**
+     * Puts an object with CRC64_NVME checksum and verifies the server stores and returns it.
+     * Expected: Put succeeds; HEAD returns same CRC64_NVME checksum. Skipped by default (requires C runtime).
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     @Ignore("Requires C runtime")
@@ -99,6 +119,10 @@ public class ChecksumTests extends S3TestBase {
         assertEquals(String.format("Checksum mismatch (expected: %s, received: %s)", putChecksum, headChecksum), putChecksum, headChecksum);
     }
 
+    /**
+     * Puts an object using indefinite-length (chunked) request body with CRC32 checksum.
+     * Expected: Put completes successfully without requiring a predeclared Content-Length.
+     */
     @Test
     @SkipForQuirks({Quirk.CHECKSUMS_NOT_SUPPORTED})
     public void indefiniteLengthWithChecksum() {

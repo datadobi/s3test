@@ -70,6 +70,10 @@ public class ObjectKeyTests extends S3TestBase {
     public ObjectKeyTests() throws IOException {
     }
 
+    /**
+     * Puts an object with a simple key via raw signed PUT and verifies it appears in list.
+     * Expected: HTTP 2xx; key "key" appears in ListObjects V2.
+     */
     @Test
     public void testSimpleObjectKeySigning() throws IOException {
         var key = "key";
@@ -83,6 +87,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(keys).as("Listed keys should contain the object that was written").contains(key);
     }
 
+    /**
+     * Puts an object whose key contains a supplementary (non-BMP) codepoint (e.g. clapping hands) via raw PUT.
+     * Expected: HTTP 2xx; key with that codepoint appears in list (unless KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED).
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_CODEPOINTS_OUTSIDE_BMP_REJECTED})
     public void testKeyNamesWithHighCodePointsAreAccepted() throws IOException {
@@ -103,6 +111,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(keys).as("Listed keys should contain key with high codepoint").contains(expectedKey);
     }
 
+    /**
+     * Puts an object with key "a/b/c" (path-like) and lists keys.
+     * Expected: Exactly one key "a/b/c" returned; no implicit directory objects for "a" or "a/b" (unless quirk).
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_SLASHES_CREATE_IMPLICIT_OBJECTS})
     public void thatPathLikeKeysDontCreateDirectoryObjects() {
@@ -113,6 +125,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(keys).as("Only the actual object should be listed").containsExactly("a/b/c");
     }
 
+    /**
+     * Sends a key containing invalid UTF-8 (surrogate pair bytes encoded in stream); expects server to reject.
+     * Expected: HTTP status 4xx/5xx (rejection of invalid UTF-8 key).
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_INVALID_UTF8_NOT_REJECTED})
     public void testSurrogatePairsAreRejected() throws IOException {
@@ -150,6 +166,10 @@ public class ObjectKeyTests extends S3TestBase {
     }
 
 
+    /**
+     * Puts an object with key containing U+0001 (minimum non-null codepoint).
+     * Expected: HTTP 2xx; key accepted (unless KEYS_WITH_CODEPOINT_MIN_REJECTED).
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_CODEPOINT_MIN_REJECTED})
     public void testCodePointMinIsAccepted() throws IOException {
@@ -161,6 +181,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(status).as("Put object with key containing min codepoint should be accepted").matches(s -> s / 100 == 2, "HTTP 2xx status");
     }
 
+    /**
+     * Puts with key containing a null byte (invalid in UTF-8).
+     * Expected: HTTP 4xx/5xx (rejection); unless KEYS_WITH_NULL_NOT_REJECTED.
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_NULL_NOT_REJECTED})
     public void testNullIsRejected() throws IOException {
@@ -176,6 +200,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(status).as("Put object with invalid UTF-8 bytes should be rejected").matches(s -> s / 100 > 3, "HTTP status of 300 or above");
     }
 
+    /**
+     * Puts with key containing overlong null encoding (0xC0 0x80).
+     * Expected: HTTP 4xx/5xx (invalid UTF-8 rejected).
+     */
     @Test
     public void testControlCharacterIsAccepted() throws IOException {
 
@@ -204,6 +232,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(status).as("Put object with invalid UTF-8 bytes should be rejected").matches(s -> s / 100 > 3, "HTTP status of 300 or above");
     }
 
+    /**
+     * Puts with key containing overlong encoding of 'a' (4-byte form).
+     * Expected: HTTP 4xx/5xx (overlong UTF-8 rejected).
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_INVALID_UTF8_NOT_REJECTED})
     public void testOverlongEncodingsAreRejected() throws IOException {
@@ -227,6 +259,10 @@ public class ObjectKeyTests extends S3TestBase {
         assertThat(status).as("Put object with invalid UTF-8 bytes should be rejected").matches(s -> s / 100 > 3, "HTTP status of 300 or above");
     }
 
+    /**
+     * Puts objects with keys that are Unicode-equivalent under normalization (e.g. Å vs A+combining ring).
+     * Expected: Only the exact key used on put is retrievable; equivalent normalized forms do not match (no server-side normalization).
+     */
     @Test
     public void testThatServerDoesNotNormalizeCodePoints() throws IOException {
         // Unicode normalization : https://www.unicode.org/reports/tr15/#Norm_Forms
@@ -272,6 +308,10 @@ public class ObjectKeyTests extends S3TestBase {
         }
     }
 
+    /**
+     * When null bytes in keys are accepted: puts keys with null and "A"; lists and checks order.
+     * Expected: Keys sorted in UTF-8 order: "with-null-byte-\0.key" before "with-null-byte-A.key".
+     */
     @Test
     @SkipForQuirks({KEYS_WITH_NULL_ARE_TRUNCATED})
     public void thatServerSortsNullInUtf8Order() throws IOException {

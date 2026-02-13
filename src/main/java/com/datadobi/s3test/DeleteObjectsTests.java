@@ -31,6 +31,10 @@ public class DeleteObjectsTests extends S3TestBase {
     public DeleteObjectsTests() throws IOException {
     }
 
+    /**
+     * Deletes multiple objects by key in a single DeleteObjects request.
+     * Expected: Both objects are removed; response hasDeleted() is true and deleted list contains "a" and "b".
+     */
     @Test
     public void testDeleteObjectsByKey() {
         bucket.putObject("a", "Hello");
@@ -45,6 +49,10 @@ public class DeleteObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Deletes one object using DeleteObjects with a matching ETag condition.
+     * Expected: Object is deleted; response hasDeleted() is true and deleted list contains "a".
+     */
     @Test
     public void testDeleteObjectsWithMatchingETag() {
         bucket.putObject("a", "Hello");
@@ -59,6 +67,10 @@ public class DeleteObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Attempts to delete an object with a non-matching ETag (conditional delete).
+     * Expected: Object is not deleted; response hasDeleted() is false and deleted list is empty.
+     */
     @Test
     public void testDeleteObjectsWithDifferentETag() {
         bucket.putObject("a", "Hello");
@@ -75,6 +87,10 @@ public class DeleteObjectsTests extends S3TestBase {
         );
     }
 
+    /**
+     * Deletes objects whose keys contain ".." (e.g. "a..b", "c..d") via DeleteObjects.
+     * Expected: Both objects are deleted; response lists "a..b" and "c..d" in deleted.
+     */
     @Test
     public void testDeleteObjectsContainingDotDot() {
         bucket.putObject("a..b", "Hello");

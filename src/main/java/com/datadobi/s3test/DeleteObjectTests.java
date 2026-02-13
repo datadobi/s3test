@@ -27,12 +27,20 @@ public class DeleteObjectTests extends S3TestBase {
     public DeleteObjectTests() throws IOException {
     }
 
+    /**
+     * Puts an object then deletes it with DeleteObject.
+     * Expected: Delete succeeds; object is no longer present (no exception).
+     */
     @Test
     public void testDeleteObject() {
         bucket.putObject("foo", "Hello, World!");
         bucket.deleteObject("foo");
     }
 
+    /**
+     * Puts and then deletes an object whose key contains ".." (e.g. "f..o").
+     * Expected: HEAD confirms object exists; DeleteObject succeeds without error.
+     */
     @Test
     public void testDeleteObjectContainingDotDot() {
         var fullContent = "Hello, World!";

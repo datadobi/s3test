@@ -195,15 +195,16 @@ public class RunTests {
                 }
                 stdOut.println();
             } else if (failure != null) {
-                stdOut.println(" ❌: " + failure.getException().getMessage());
-
+                stdOut.println(" ❌");
+                String shortMessage = getShortFailureMessage(failure);
+                stdOut.println("    " + shortMessage);
                 if (logPath != null) {
-                    Path logPath = Files.createDirectories(
+                    Path logDir = Files.createDirectories(
                             this.logPath.resolve(description.getTestClass().getSimpleName())
                                     .resolve(description.getMethodName())
                     );
                     Files.writeString(
-                            logPath.resolve("error.log"),
+                            logDir.resolve("error.log"),
                             failure.getTrace(),
                             StandardCharsets.UTF_8
                     );
@@ -211,6 +212,22 @@ public class RunTests {
             } else {
                 stdOut.println(" ✅");
             }
+        }
+
+        private static String getShortFailureMessage(Failure failure) {
+            Throwable ex = failure.getException();
+            String name = ex.getClass().getSimpleName();
+            String message = ex.getMessage();
+            if (message != null && !message.isBlank()) {
+                // keep first line only, truncate if very long
+                String firstLine = message.lines().findFirst().orElse("").trim();
+                int maxLen = 200;
+                if (firstLine.length() > maxLen) {
+                    firstLine = firstLine.substring(0, maxLen) + "...";
+                }
+                return name + ": " + firstLine;
+            }
+            return name;
         }
     }
 }

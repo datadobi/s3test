@@ -35,6 +35,11 @@ public class ConditionalRequestTests extends S3TestBase {
     public ConditionalRequestTests() throws IOException {
     }
 
+    /**
+     * Puts an object, then attempts overwrite with If-None-Match: * (create-only semantics).
+     * Expected: First put succeeds; second put either fails with 412 Precondition Failed (object exists)
+     * or 501 if unsupported; if it wrongly succeeds, GET returns new content and test fails.
+     */
     @Test
     @SkipForQuirks({PUT_OBJECT_IF_NONE_MATCH_STAR_NOT_SUPPORTED})
     public void thatConditionalPutIfNoneMatchStarWorks() throws InterruptedException {
@@ -59,6 +64,10 @@ public class ConditionalRequestTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, then attempts overwrite with If-None-Match: "<etag>" (create-only if etag differs).
+     * Expected: Overwrite fails with 412 (or 501 if unsupported); object content remains unchanged.
+     */
     @Test
     @SkipForQuirks({PUT_OBJECT_IF_NONE_MATCH_ETAG_NOT_SUPPORTED})
     public void thatConditionalPutIfNoneMatchEtagWorks() throws IOException, InterruptedException {
@@ -110,6 +119,10 @@ public class ConditionalRequestTests extends S3TestBase {
         }
     }
 
+    /**
+     * Puts an object, then overwrites with If-Match: "<etag>" (update-only if etag matches).
+     * Expected: Overwrite succeeds; GET returns new content and new ETag; or 412/501 if precondition fails.
+     */
     @Test
     @SkipForQuirks({PUT_OBJECT_IF_MATCH_ETAG_NOT_SUPPORTED})
     public void thatConditionalPutIfMatchEtagWorks() throws IOException, InterruptedException {
@@ -153,6 +166,16 @@ public class ConditionalRequestTests extends S3TestBase {
                     "baz"
             );
 
+            GetObjectResponse getResponse;
+            String content;
+            try (var response = bucket.getObject("object")) {
+                getResponse = response.response();
+                content = new String(response.readAllBytes(), StandardCharsets.UTF_8);
+            }
+            if (!target.hasQuirk(PUT_OBJECT_IF_MATCH_ETAG_NOT_SUPPORTED)) {
+                assertEquals("bar", content);
+                assertEquals(overwritePutResponse.eTag(), getResponse.eTag());
+            }
             fail("PutObject using 'If-Match: \"<etag>\"' should fail if object etag does not match current etag");
         } catch (S3Exception e) {
             // Should have gotten 412 Precondition Failed
