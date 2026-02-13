@@ -275,7 +275,7 @@ public class ObjectKeyTests extends S3TestBase {
     @Test
     @SkipForQuirks({KEYS_WITH_NULL_ARE_TRUNCATED})
     public void thatServerSortsNullInUtf8Order() throws IOException {
-        assumeTrue(target.hasQuirk(KEYS_WITH_NULL_NOT_REJECTED));
+        assumeQuirk(KEYS_WITH_NULL_NOT_REJECTED);
 
         var nullEncoding = "\0".getBytes(UTF_8);
         var capitalAEncoding = "A".getBytes(UTF_8);

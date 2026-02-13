@@ -22,7 +22,7 @@ import org.junit.rules.MethodRule;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 
-import static org.junit.Assume.assumeFalse;
+import static com.datadobi.s3test.s3.S3TestBase.ignoreDueToQuirk;
 
 public class SkipForQuirksRule implements MethodRule {
     @Override

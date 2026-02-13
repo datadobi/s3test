@@ -29,6 +29,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
+
 public class S3TestBase {
     public static final Config DEFAULT_CONFIG;
     public static ServiceDefinition DEFAULT_SERVICE;
@@ -118,5 +121,15 @@ public class S3TestBase {
         if (CAPTURE_TEARDOWN) {
             WIRE_LOGGER.stop();
         }
+    }
+
+    public void assumeQuirk(Quirk quirk) {
+        if (!target.hasQuirk(quirk)) {
+            assumeFalse("Ignored: " + quirk + " quirk disabled", true);
+        }
+    }
+
+    public static void ignoreDueToQuirk(Quirk quirk) {
+        assumeFalse("Ignored: " + quirk + " quirk enabled", true);
     }
 }
