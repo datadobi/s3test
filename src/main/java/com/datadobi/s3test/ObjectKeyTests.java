@@ -177,6 +177,19 @@ public class ObjectKeyTests extends S3TestBase {
     }
 
     @Test
+    public void testControlCharacterIsAccepted() throws IOException {
+
+        String key = "with-control-\u001b";
+        var data = ("Content: " + UUID.randomUUID()).getBytes(UTF_8);
+
+        var status = putObject(target.signingRegion(), data, key.getBytes(UTF_8));
+        assertThat(status).as("Put object with ASCII control characters should be accepted").isEqualTo(200);
+
+        var keys = bucket.listObjectKeys(S3.ListObjectsVersion.V2);
+        assertThat(keys).as("Listed keys should contain the object that was written").contains(key);
+    }
+
+    @Test
     @SkipForQuirks({KEYS_WITH_INVALID_UTF8_NOT_REJECTED})
     public void testOverlongNullIsRejected() throws IOException {
 
