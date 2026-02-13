@@ -28,6 +28,10 @@ public enum Quirk {
      */
     CONTENT_TYPE_NOT_SET_FOR_KEYS_WITH_TRAILING_SLASH,
     /**
+     * The server does not support deleting individual object versions.
+     */
+    DELETE_OBJECT_VERSION_NOT_SUPPORTED,
+    /**
      * After copying an object, an empty ETag is returned.
      */
     ETAG_EMPTY_AFTER_COPY_OBJECT,
@@ -68,6 +72,10 @@ public enum Quirk {
      * The server behaves similarly to S3ExpressOneZone directory buckets.
      */
     KEYS_WITH_SLASHES_CREATE_IMPLICIT_OBJECTS,
+    /**
+     * The server does not support multipart uploads.
+     */
+    MULTIPART_UPLOAD_NOT_SUPPORTED,
     /**
      * After completing a multipart upload, the server does not guarantee that the size or number of parts uploaded
      * by the client will be preserved.

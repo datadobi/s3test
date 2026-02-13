@@ -54,7 +54,7 @@ public class SkipForQuirksRule implements MethodRule {
 
         @Override
         public void evaluate() throws Throwable {
-            assumeFalse("Ignored due to quirk " + quirk, quirk != null);
+            ignoreDueToQuirk(quirk);
             this.next.evaluate();
         }
     }

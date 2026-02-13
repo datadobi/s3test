@@ -260,7 +260,7 @@ public class S3 {
         clearBucket(s3, bucketName, false, false);
     }
 
-    public static void clearBucket(S3Client s3, String bucketName, boolean canNotDeleteVersions, boolean isMultipartSupported) {
+    public static void clearBucket(S3Client s3, String bucketName, boolean canNotDeleteVersions, boolean isMultipartUnsupported) {
         GetBucketVersioningResponse configuration = s3.getBucketVersioning(GetBucketVersioningRequest.builder().bucket(bucketName).build());
         boolean versionsEnabled = configuration.status() == BucketVersioningStatus.ENABLED;
 
@@ -339,7 +339,7 @@ public class S3 {
             }
         }
 
-        if (isMultipartSupported) {
+        if (!isMultipartUnsupported) {
             ListMultipartUploadsResponse uploads = s3.listMultipartUploads(
                     ListMultipartUploadsRequest.builder().bucket(bucketName).encodingType(EncodingType.URL).build());
             for (MultipartUpload upload : uploads.uploads()) {

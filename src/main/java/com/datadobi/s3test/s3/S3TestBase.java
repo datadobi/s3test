@@ -96,9 +96,21 @@ public class S3TestBase {
         s3 = S3.createClient(target);
 
         this.bucket = new S3Bucket(s3, target.bucket());
+
         if (target.createBucket()) {
             bucket.create();
+        } else {
+            if (!this.bucket.listObjectKeys(S3.ListObjectsVersion.V2).isEmpty()) {
+                fail("Existing bucket is not empty");
+            }
+
+            if (!target.hasQuirk(Quirk.MULTIPART_UPLOAD_NOT_SUPPORTED)) {
+                if (this.bucket.listMultipartUploads().hasUploads()) {
+                    fail("Existing bucket has multipart uploads");
+                }
+            }
         }
+
 
         if (!CAPTURE_SETUP) {
             WIRE_LOGGER.start(currentTest);
@@ -111,7 +123,13 @@ public class S3TestBase {
             WIRE_LOGGER.stop();
         }
 
-        S3.clearBucket(s3, target.bucket());
+        S3.clearBucket(
+                s3,
+                target.bucket(),
+                target.hasQuirk(Quirk.DELETE_OBJECT_VERSION_NOT_SUPPORTED),
+                target.hasQuirk(Quirk.MULTIPART_UPLOAD_NOT_SUPPORTED)
+        );
+
         if (target.createBucket()) {
             bucket.delete();
         }

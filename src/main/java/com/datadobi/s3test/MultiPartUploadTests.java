@@ -19,6 +19,7 @@
 package com.datadobi.s3test;
 
 import com.datadobi.s3test.s3.S3TestBase;
+import com.datadobi.s3test.s3.SkipForQuirks;
 import org.junit.Test;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -38,6 +39,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadWithNoParts() {
         String key = "foo";
 
@@ -52,6 +54,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadTwice() {
         String key = "foo";
 
@@ -70,6 +73,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadWithPart() {
         String key = "foo";
 
@@ -115,6 +119,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadWithIncorrectKey() {
         CreateMultipartUploadResponse mpu = bucket.createMultipartUpload("foo");
         try {
@@ -125,6 +130,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadWithIncorrectUploadId() {
         bucket.createMultipartUpload("foo");
 
@@ -136,6 +142,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void abortMultipartUploadWithIncorrectKeyAndUploadId() {
         bucket.createMultipartUpload("foo");
 
@@ -147,6 +154,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void completeMultipartUploadWithNoParts() {
         String key = "foo";
 
@@ -162,6 +170,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void completeMultipartUploadWithPart() {
         String key = "foo";
 
@@ -182,6 +191,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void completeMultipartUploadTwice() {
         String key = "foo";
 
@@ -206,6 +216,7 @@ public class MultiPartUploadTests extends S3TestBase {
     }
 
     @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
     public void thatMultipartRetrievesOriginalParts() throws Exception {
         // generate multipart data
         // see: https://docs.aws.amazon.com/AmazonS3/latest/dev/llJavaUploadFile.html
