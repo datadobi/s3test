@@ -125,12 +125,10 @@ public class RunTests {
                     public boolean shouldRun(Description description) {
                         String methodName = description.getMethodName();
                         if (exclude.stream().anyMatch(e -> e.matcher(methodName).matches())) {
-                            System.out.println(methodName + " excluded");
                             return false;
                         }
 
                         if (!include.isEmpty() && include.stream().noneMatch(i -> i.matcher(methodName).matches())) {
-                            System.out.println(methodName + " not included");
                             return false;
                         }
 
@@ -144,7 +142,7 @@ public class RunTests {
                 });
                 junit.run(runner);
             } catch (NoTestsRemainException e) {
-                System.out.println("Skipping " + runner.getDescription());
+                // Expected
             }
         }
     }
