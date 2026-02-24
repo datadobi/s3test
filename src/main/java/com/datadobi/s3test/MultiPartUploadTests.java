@@ -25,7 +25,6 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -171,7 +170,7 @@ public class MultiPartUploadTests extends S3TestBase {
 
     @Test
     @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
-    public void completeMultipartUploadWithPart() {
+    public void completeMultipartUploadWithSinglePart() {
         String key = "foo";
 
         CreateMultipartUploadResponse mpu = bucket.createMultipartUpload(key);
@@ -217,60 +216,89 @@ public class MultiPartUploadTests extends S3TestBase {
 
     @Test
     @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
-    public void thatMultipartRetrievesOriginalParts() throws Exception {
-        // generate multipart data
-        // see: https://docs.aws.amazon.com/AmazonS3/latest/dev/llJavaUploadFile.html
-
+    public void completeMultipartUploadWithMultipleParts() throws Exception {
         var key = "multiparted";
-        // parts are minimum 5 MB
-        long[] partitionSizes = {5 * MB, 10 * MB, 5 * MB, 7 * MB, 12 * MB, 13 * MB, 9 * MB, 5 * MB, 5 * MB, 5 * MB, 3 * MB};
-        var partitionCount = partitionSizes.length;
-        var uploadedTotalSize = Arrays.stream(partitionSizes).sum();
 
+        // Start multipart upload
+        String uploadId = bucket.createMultipartUpload(key).uploadId();
+
+        // Upload parts
+        long[] partitionSizes = {5 * MB, 7 * MB, 11 * MB, 1 * MB};
+        List<CompletedPart> completedParts = uploadParts(key, uploadId, partitionSizes);
+
+        // Complete the multipart upload with all uploaded parts.
+        bucket.completeMultipartUpload(r -> r.key(key)
+                .uploadId(uploadId)
+                .multipartUpload(CompletedMultipartUpload.builder().parts(completedParts).build()));
+
+        // Verify result
+        verifyMultipartUpload(key, partitionSizes, completedParts);
+    }
+
+    @Test
+    @SkipForQuirks({MULTIPART_UPLOAD_NOT_SUPPORTED})
+    public void completeMultipartUploadWithOmittedParts() throws Exception {
+        var key = "multiparted";
+
+        // Start multipart upload
+        String uploadId = bucket.createMultipartUpload(key).uploadId();
+
+        // Upload parts
+        long[] partitionSizes = {5 * MB, 10 * MB, 1 * MB};
+        List<CompletedPart> allUploadedParts = uploadParts(key, uploadId, partitionSizes);
+
+        // Complete the multipart upload with only two of the three uploaded parts.
+        List<CompletedPart> completedParts = List.of(allUploadedParts.get(0), allUploadedParts.get(2));
+        bucket.completeMultipartUpload(r -> r.key(key)
+                .uploadId(uploadId)
+                .multipartUpload(CompletedMultipartUpload.builder().parts(completedParts).build()));
+
+        // Verify result
+        verifyMultipartUpload(key, partitionSizes, completedParts);
+    }
+
+    private List<CompletedPart> uploadParts(String key, String uploadId, long[] partitionSizes) {
+        // Upload the file parts.
         List<CompletedPart> partETags = new ArrayList<>();
 
-        // Initiate the multipart upload.
-        var initResponse = bucket.createMultipartUpload(key);
-
-        // Upload the file parts.
-        for (var partNumber = 1; partNumber <= partitionCount; partNumber++) {
+        for (var partNumber = 1; partNumber <= partitionSizes.length; partNumber++) {
             var partitionSize = partitionSizes[partNumber - 1];
 
             var content = new byte[(int) partitionSize];
 
             // Upload the part and add the response's ETag to our list.
-            var uploadResult = bucket.uploadPart(key, initResponse.uploadId(), partNumber, content);
+            var uploadResult = bucket.uploadPart(key, uploadId, partNumber, content);
             partETags.add(CompletedPart.builder()
                     .partNumber(partNumber)
                     .eTag(uploadResult.eTag())
                     .build());
         }
+        return partETags;
+    }
 
-        // Complete the multipart upload.
-        bucket.completeMultipartUpload(r -> r.key(key)
-                .uploadId(initResponse.uploadId())
-                .multipartUpload(CompletedMultipartUpload.builder().parts(partETags).build()));
+    private void verifyMultipartUpload(String key, long[] partitionSizes, List<CompletedPart> completedParts) throws IOException {
+        long uploadedTotalSize = 0L;
+        for (CompletedPart completedPart : completedParts) {
+            int originalPartNumber = completedPart.partNumber();
+            uploadedTotalSize += partitionSizes[originalPartNumber - 1];
+        }
 
-        //
-        // retrieve multipart data
-        //
-
-        long receivedTotalSize = 0;
+        long reportedTotalSize = 0;
 
         var objectMetadata = bucket.headObject(r -> r.key(key).partNumber(1));
 
         assertNotNull("Object metadata should not be null after HEAD request", objectMetadata);
 
-        Integer receivePartitionCount = null;
+        Integer reportedPartCount = null;
 
         if (!target.hasQuirk(GET_OBJECT_PART_NOT_SUPPORTED)) {
-            receivePartitionCount = objectMetadata.partsCount();
-            if (receivePartitionCount != null) {
+            reportedPartCount = objectMetadata.partsCount();
+            if (reportedPartCount != null) {
                 if (!target.hasQuirk(MULTIPART_SIZES_NOT_KEPT)) {
                     assertEquals(
                             "Part count should match unless MULTIPART_SIZES_NOT_KEPT quirk",
-                            Integer.valueOf(partitionCount),
-                            receivePartitionCount
+                            Integer.valueOf(completedParts.size()),
+                            reportedPartCount
                     );
                 }
                 assertFalse("Part count should be supported", target.hasQuirk(GET_OBJECT_PARTCOUNT_NOT_SUPPORTED));
@@ -279,21 +307,22 @@ public class MultiPartUploadTests extends S3TestBase {
             }
         }
 
-        if (receivePartitionCount != null) {
+        if (reportedPartCount != null) {
             // Download the file parts.
-            for (var partNumber = 1; partNumber <= receivePartitionCount; partNumber++) {
-                var partitionSize = partitionSizes[partNumber - 1];
+            for (var partNumber = 1; partNumber <= reportedPartCount; partNumber++) {
+                int originalPartNumber = completedParts.get(partNumber - 1).partNumber();
+                var partitionSize = partitionSizes[originalPartNumber - 1];
 
                 var finalPartNumber = partNumber;
                 try (var object = bucket.getObject(r -> r.key(key).partNumber(finalPartNumber))) {
-                    long receivedSize = object.response().contentLength();
+                    long reportedPartSize = object.response().contentLength();
 
-                    receivedTotalSize += receivedSize;
+                    reportedTotalSize += reportedPartSize;
 
                     if (!target.hasQuirk(MULTIPART_SIZES_NOT_KEPT)) {
                         assertEquals(
                                 "Part size should be preserved",
-                                receivedSize,
+                                reportedPartSize,
                                 partitionSize
                         );
                     }
@@ -304,10 +333,10 @@ public class MultiPartUploadTests extends S3TestBase {
             try (var object = bucket.getObject(key)) {
                 long receivedSize = object.response().contentLength();
 
-                receivedTotalSize += receivedSize;
+                reportedTotalSize += receivedSize;
             }
         }
 
-        assertEquals("Total received size should match uploaded size", receivedTotalSize, uploadedTotalSize);
+        assertEquals("Total received size should match uploaded size", reportedTotalSize, uploadedTotalSize);
     }
 }
